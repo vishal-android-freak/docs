@@ -1,0 +1,684 @@
+---
+title: "Settings & Configuration"
+description: "Manage server profiles, permission modes, allowed tools, and app preferences"
+---
+
+## Settings Overview
+
+The Settings tab is your control center for configuring CCC, managing server connections, and customizing the app experience.
+
+![Settings screen overview](images/mobile-settings-overview.png)
+
+<Info>
+Access Settings by tapping the **Settings** tab (gear icon) in the bottom navigation bar.
+</Info>
+
+## Appearance Settings
+
+Customize how the app looks with theme options.
+
+### Theme Modes
+
+Choose from three appearance modes:
+
+<CardGroup cols={3}>
+  <Card title="Light Mode" icon="sun">
+    Bright theme with white backgrounds and dark text. Best for daytime use and bright environments.
+  </Card>
+  <Card title="Dark Mode" icon="moon">
+    Dark theme with dark backgrounds and light text. Reduces eye strain in low-light environments.
+  </Card>
+  <Card title="System" icon="circle-half-stroke">
+    Automatically follows your device's system theme. Changes dynamically when you switch system appearance.
+  </Card>
+</CardGroup>
+
+![Theme selection](images/mobile-theme-modes.png)
+
+### Changing Themes
+
+<Steps>
+  <Step title="Open Settings">
+    Tap Settings tab at bottom
+  </Step>
+  <Step title="Tap a theme option">
+    Light, Dark, or System
+  </Step>
+  <Step title="Theme applies instantly">
+    No restart required—changes immediately
+  </Step>
+</Steps>
+
+<Tip>
+**System theme benefit:** Set to System mode and your app will automatically switch to dark mode at night if your device does.
+</Tip>
+
+### Color Palette
+
+The app uses a consistent color scheme across themes:
+
+<Tabs>
+  <Tab title="Light Theme">
+    - **Background:** Pampas (#F4F3EE)
+    - **Cards:** White (#FFFFFF)
+    - **Accent:** Crail (#C15F3C)
+    - **Text:** Dark gray to black
+    - **Borders:** Light gray (#CCCCCC)
+  </Tab>
+  <Tab title="Dark Theme">
+    - **Background:** Dark gray (#1A1A1A)
+    - **Cards:** Slightly lighter dark (#2A2A2A)
+    - **Accent:** Crail (#C15F3C)
+    - **Text:** Light gray to white
+    - **Borders:** Dark gray (#3A3A3A)
+  </Tab>
+</Tabs>
+
+<Note>
+The **Crail orange** (#C15F3C) accent color remains consistent across both themes for brand recognition and visual continuity.
+</Note>
+
+## Server Profiles
+
+Manage multiple server connections and switch between them easily.
+
+### Profile List
+
+Each server profile displays:
+
+- **Profile name** - Descriptive name you chose
+- **Server URL** - Domain and port of backend server
+- **Active indicator** - Orange checkmark on the active profile
+- **Edit button** - Pencil icon to modify
+- **Delete button** - Trash icon to remove
+
+![Server profile list](images/mobile-profile-list.png)
+
+### Creating a Profile
+
+<Steps>
+  <Step title="Tap + button">
+    Plus icon in the Server Profiles section header
+  </Step>
+  <Step title="Fill in details">
+    - **Profile Name** * (required)
+    - **Server URL** * (required)
+    - **MQTT Username** (optional)
+    - **MQTT Password** (optional)
+    - **Use SSL/TLS** (toggle)
+  </Step>
+  <Step title="Tap Create">
+    Profile is saved and appears in your list
+  </Step>
+</Steps>
+
+### Profile Fields
+
+<AccordionGroup>
+  <Accordion title="Profile Name (Required)" icon="tag">
+    **Purpose:** Identify this connection in your list
+
+    **Examples:**
+    - "Local Dev Server"
+    - "Work MacBook Pro"
+    - "Remote via Ngrok"
+    - "Production Server"
+
+    **Tip:** Use descriptive names that indicate location or purpose
+  </Accordion>
+
+  <Accordion title="Server URL (Required)" icon="globe">
+    **Purpose:** Backend server address
+
+    **Format:** domain:port (no http:// or https://)
+
+    **Examples:**
+    - `192.168.1.100:3000` (local network)
+    - `10.0.0.5:3000` (local network)
+    - `abc123.ngrok.io` (ngrok tunnel)
+    - `myserver.com:3000` (custom domain)
+
+    **Common mistakes:**
+    - ❌ `http://192.168.1.100:3000` (no protocol)
+    - ❌ `https://myserver.com` (include port)
+    - ✅ `myserver.com:3000` (correct)
+  </Accordion>
+
+  <Accordion title="MQTT Username (Optional)" icon="user">
+    **Purpose:** Authenticate to MQTT broker
+
+    **When to use:**
+    - Backend has authentication enabled
+    - You configured MQTT credentials
+    - Connecting to secured production server
+
+    **Leave blank if:** Backend runs without authentication (default)
+  </Accordion>
+
+  <Accordion title="MQTT Password (Optional)" icon="lock">
+    **Purpose:** Password for MQTT authentication
+
+    **Security:**
+    - Stored in device's secure keychain/keystore
+    - Never displayed in logs
+    - Show/hide with eye icon
+
+    **Tip:** Use strong passwords for production servers
+  </Accordion>
+
+  <Accordion title="Use SSL/TLS (Toggle)" icon="shield-check">
+    **Purpose:** Enable encrypted WebSocket connection
+
+    **Enable (ON) when:**
+    - Server URL starts with https:// (ngrok, custom domain with SSL)
+    - Backend configured with SSL certificates
+    - Security is critical (production)
+
+    **Disable (OFF) when:**
+    - Server URL is http:// (local development)
+    - No SSL certificates configured
+    - Testing on local network
+  </Accordion>
+</AccordionGroup>
+
+![Server profile form](images/mobile-profile-form.png)
+
+<Warning>
+**SSL Mismatch:** If SSL toggle doesn't match server configuration, connection will fail. http:// = OFF, https:// = ON.
+</Warning>
+
+### Editing a Profile
+
+<Steps>
+  <Step title="Tap edit button">
+    Pencil icon on the profile you want to change
+  </Step>
+  <Step title="Modify fields">
+    Change any field except credentials load from secure storage
+  </Step>
+  <Step title="Tap Save">
+    Profile is updated immediately
+  </Step>
+</Steps>
+
+<Note>
+When editing, MQTT credentials are pre-filled from secure storage. If fields are empty, no credentials were previously saved.
+</Note>
+
+### Switching Profiles
+
+To change which server you're connected to:
+
+<Steps>
+  <Step title="Tap profile card">
+    Tap anywhere on the profile you want to activate
+  </Step>
+  <Step title="Profile activates">
+    Orange checkmark moves to selected profile
+  </Step>
+  <Step title="Connection switches">
+    App reconnects to new server immediately
+  </Step>
+  <Step title="Toast notification">
+    Confirmation message: "Profile Name is now active"
+  </Step>
+</Steps>
+
+<Tip>
+**Use case:** Switch between local dev server during the day and remote ngrok server when away from desk.
+</Tip>
+
+### Deleting a Profile
+
+<Steps>
+  <Step title="Tap delete button">
+    Trash icon on the profile to remove
+  </Step>
+  <Step title="Confirm deletion">
+    Modal appears asking "Are you sure?"
+  </Step>
+  <Step title="Tap Delete">
+    Profile is permanently removed
+  </Step>
+</Steps>
+
+<Warning>
+**Cannot delete active profile:** You must switch to a different profile before deleting the currently active one.
+</Warning>
+
+### Profile Management Tips
+
+<AccordionGroup>
+  <Accordion title="Multiple environments" icon="layer-group">
+    Create separate profiles for:
+    - Development (local)
+    - Staging (VPN or tunnel)
+    - Production (secure remote)
+
+    Switch with one tap based on where you're working.
+  </Accordion>
+
+  <Accordion title="Descriptive names" icon="tag">
+    Use names that tell you:
+    - **Location:** "Home Office", "Work Laptop"
+    - **Purpose:** "Personal Projects", "Client Work"
+    - **Connection:** "Local WiFi", "Remote Ngrok"
+  </Accordion>
+
+  <Accordion title="Test before deleting" icon="vial">
+    Before deleting an old profile:
+    1. Create and test new profile
+    2. Switch to new profile
+    3. Verify connection works
+    4. Then delete old profile
+  </Accordion>
+
+  <Accordion title="Backup credentials" icon="floppy-disk">
+    Store MQTT credentials somewhere safe (password manager). If you delete and recreate a profile, you'll need to re-enter them.
+  </Accordion>
+</AccordionGroup>
+
+## Connection Indicator
+
+The app shows connection status in the chat screen header:
+
+<Tabs>
+  <Tab title="Green Dot">
+    **Status:** Connected
+    **Meaning:** MQTT connection active, backend healthy
+    **Action:** None needed
+  </Tab>
+  <Tab title="Yellow Dot">
+    **Status:** Reconnecting
+    **Meaning:** Connection lost, attempting to reconnect
+    **Action:** Wait 5-10 seconds for auto-reconnect
+  </Tab>
+  <Tab title="Red Dot">
+    **Status:** Disconnected
+    **Meaning:** No connection to server
+    **Action:** Check server is running, verify profile settings
+  </Tab>
+</Tabs>
+
+### Backend Health Banner
+
+If backend is connected but Claude Code client is disconnected, a yellow banner appears:
+
+```
+⚠️ Backend client disconnected - messages won't be processed
+```
+
+**Causes:**
+- Claude Code CLI not running
+- Backend started without `--auto` flag
+- Claude Code crashed or was stopped
+
+**Fix:** Start Claude Code on your server with `ccc start --auto`
+
+## App Information
+
+View app version and check for updates:
+
+### Version Display
+
+Shows:
+- **App version:** Current mobile app version (e.g., 1.1.1)
+- **Backend version:** Version of connected backend (e.g., 2.0.1)
+- **Build channel:** Beta or production
+
+<Note>
+Backend version only appears when connected to a server. If disconnected, it shows "Not connected".
+</Note>
+
+### Update Notifications
+
+The app checks for updates when you:
+- Open the Projects screen
+- Pull to refresh on Projects screen
+- Resume app from background
+
+Three types of updates:
+
+<AccordionGroup>
+  <Accordion title="OTA Updates" icon="bolt">
+    **What:** Minor updates (bug fixes, small features)
+
+    **How:** Downloaded automatically in background
+
+    **Install:** Apply on next app launch (no store visit)
+
+    **Example:** 1.1.1 → 1.1.2
+  </Accordion>
+
+  <Accordion title="App Store Updates" icon="store">
+    **What:** Major updates (new features, breaking changes)
+
+    **How:** Manual download from App Store or Google Play
+
+    **Install:** User must visit store and update
+
+    **Example:** 1.1.x → 1.2.0
+  </Accordion>
+
+  <Accordion title="Backend Updates" icon="server">
+    **What:** Backend server version mismatch
+
+    **How:** Update backend on server with `npm update -g @naarang/ccc`
+
+    **Compatibility:** App may require backend update to work
+
+    **Example:** Backend 1.9.x, app requires 2.0.x
+  </Accordion>
+</AccordionGroup>
+
+### Update Prompts
+
+When an update is available:
+
+![Update prompt](images/mobile-update-prompt.png)
+
+<Tabs>
+  <Tab title="Optional Update">
+    Modal shows:
+    - Current version
+    - New version available
+    - "Update" button (opens store)
+    - "Later" button (dismisses)
+  </Tab>
+  <Tab title="Required Update">
+    Modal shows:
+    - "Update Required" title
+    - Why update is needed
+    - "Update Now" button (only option)
+
+    **Cannot dismiss** - must update to continue
+  </Tab>
+</Tabs>
+
+<Warning>
+**Required updates** may indicate critical security fixes or breaking backend changes. Update as soon as possible.
+</Warning>
+
+## Cache Management
+
+Clear cached data to free up storage or resolve issues.
+
+### What Gets Cached
+
+The app caches:
+- **Messages:** Recent messages for offline viewing
+- **Sessions:** Session metadata and history
+- **Images:** Compressed image attachments
+- **Credentials:** MQTT passwords (secure keychain)
+- **Settings:** Theme, active profile, preferences
+
+### Clearing Cache
+
+<Steps>
+  <Step title="Scroll to bottom of Settings">
+    Find "Clear Cache" or "App Data" section
+  </Step>
+  <Step title="Tap Clear Cache">
+    Confirmation modal appears
+  </Step>
+  <Step title="Confirm action">
+    Cache is cleared immediately
+  </Step>
+  <Step title="App reloads">
+    Returns to Projects screen with fresh data
+  </Step>
+</Steps>
+
+<Info>
+**What's preserved:**
+- Server profiles and credentials
+- Project list
+- App settings (theme, etc.)
+
+**What's cleared:**
+- Message cache
+- Session metadata
+- Temporary files
+</Info>
+
+### When to Clear Cache
+
+<AccordionGroup>
+  <Accordion title="App behaving strangely" icon="bug">
+    Symptoms:
+    - Messages not loading
+    - Old sessions appearing
+    - Stale data showing
+
+    **Fix:** Clear cache to reset local state
+  </Accordion>
+
+  <Accordion title="Storage space low" icon="hard-drive">
+    If device storage is low and you don't need offline messages:
+
+    **Fix:** Clear cache to free up 10-50MB
+  </Accordion>
+
+  <Accordion title="After major update" icon="arrow-up">
+    After updating from store or applying large OTA:
+
+    **Fix:** Clear cache to remove old cached data structures
+  </Accordion>
+
+  <Accordion title="Switching server profiles" icon="arrows-rotate">
+    When permanently switching to different server:
+
+    **Fix:** Clear cache to remove old server's cached sessions
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+Clearing cache removes offline access to messages. You'll need to reconnect and re-fetch sessions from the server.
+</Warning>
+
+## Logout / Reset
+
+Reset the app to initial state.
+
+### What Logout Does
+
+Clears:
+- All server profiles
+- All projects
+- All messages
+- All cached data
+- All credentials
+- App settings (theme resets to default)
+
+<Warning>
+**Cannot undo.** This is a destructive operation. You'll need to reconfigure server profiles and recreate projects.
+</Warning>
+
+### When to Logout
+
+<AccordionGroup>
+  <Accordion title="Switching user/device" icon="user-group">
+    If sharing device or switching accounts:
+
+    **Action:** Logout to clear all personal data
+  </Accordion>
+
+  <Accordion title="Complete reset needed" icon="rotate-left">
+    If app is completely broken and nothing else works:
+
+    **Action:** Logout and start fresh
+  </Accordion>
+
+  <Accordion title="Selling/giving away device" icon="right-from-bracket">
+    Before transferring device:
+
+    **Action:** Logout, then uninstall app
+  </Accordion>
+</AccordionGroup>
+
+### Logout Process
+
+<Steps>
+  <Step title="Tap Logout button">
+    Usually at bottom of Settings (may need to scroll)
+  </Step>
+  <Step title="Confirm action">
+    Modal warns about data loss
+  </Step>
+  <Step title="Tap Confirm">
+    All data is erased
+  </Step>
+  <Step title="Return to onboarding">
+    App restarts at welcome screen
+  </Step>
+</Steps>
+
+<Note>
+**Server data preserved:** Logout only clears mobile app data. Session files, projects, and backend data remain on your server.
+</Note>
+
+## Troubleshooting Settings
+
+<AccordionGroup>
+  <Accordion title="Can't connect to server" icon="wifi">
+    1. **Verify profile settings:**
+       - Server URL format: `domain:port` (no http://)
+       - SSL toggle matches server (http = OFF, https = ON)
+       - Port is correct (default 3000)
+
+    2. **Check backend:**
+       - Run `ccc --status` on server
+       - Ensure backend is running
+       - Check firewall allows port
+
+    3. **Test from browser:**
+       - Visit `http://SERVER_URL/health`
+       - Should return JSON with status
+  </Accordion>
+
+  <Accordion title="Theme not changing" icon="palette">
+    1. Force close app and reopen
+    2. Check device OS allows theme changes
+    3. Clear app cache
+    4. Reinstall app if persistent
+  </Accordion>
+
+  <Accordion title="Can't delete profile" icon="trash">
+    **Issue:** Profile is currently active
+
+    **Fix:**
+    1. Create or select different profile
+    2. Activate that profile (tap to switch)
+    3. Now delete the original profile
+  </Accordion>
+
+  <Accordion title="Credentials not saving" icon="key">
+    1. Check device has secure keychain enabled
+    2. Try re-entering credentials
+    3. On Android, ensure screen lock is set (required for keystore)
+    4. Reinstall app if corrupted
+  </Accordion>
+
+  <Accordion title="Update not installing" icon="download">
+    **OTA Updates:**
+    - App must be closed and reopened
+    - May take 1-2 minutes to download
+
+    **Store Updates:**
+    - Visit App Store or Google Play manually
+    - Check storage space available
+    - Try restarting device
+  </Accordion>
+</AccordionGroup>
+
+## Privacy & Security
+
+<Info>
+CCC takes privacy and security seriously. Here's what you should know:
+</Info>
+
+### Data Storage
+
+<Tabs>
+  <Tab title="Local Storage">
+    **Stored on device:**
+    - Projects list
+    - Recent messages (cached)
+    - Session metadata
+    - App preferences
+
+    **Location:** App's private directory (not accessible by other apps)
+  </Tab>
+  <Tab title="Secure Storage">
+    **Stored in keychain/keystore:**
+    - MQTT credentials
+    - Server passwords
+    - Terminal credentials
+
+    **Security:** Hardware-encrypted, requires device unlock
+  </Tab>
+  <Tab title="Not Stored">
+    **Never stored:**
+    - Claude API keys (on server only)
+    - File contents (streamed, not cached)
+    - Terminal command history (server-side)
+  </Tab>
+</Tabs>
+
+### Network Security
+
+<AccordionGroup>
+  <Accordion title="MQTT Over WebSocket" icon="network-wired">
+    All communication uses MQTT over WebSocket:
+    - **Local:** ws:// (unencrypted, safe on private network)
+    - **Remote:** wss:// (encrypted with TLS)
+
+    Enable SSL in profile for remote connections.
+  </Accordion>
+
+  <Accordion title="No Cloud Storage" icon="cloud-slash">
+    All data stays between your device and your server. Nothing is sent to third-party clouds or CCC servers.
+  </Accordion>
+
+  <Accordion title="Optional Authentication" icon="user-lock">
+    Backend supports MQTT authentication:
+    - Username/password per profile
+    - Credentials stored securely
+    - Prevents unauthorized access
+  </Accordion>
+</AccordionGroup>
+
+### Best Practices
+
+<Tip>
+**Use SSL for remote:** Always enable SSL when connecting via ngrok or public internet.
+</Tip>
+
+<Tip>
+**Strong MQTT passwords:** If using authentication, choose strong, unique passwords.
+</Tip>
+
+<Tip>
+**Device lock required:** Set a PIN/password/biometric on your device. This is required for secure credential storage.
+</Tip>
+
+<Warning>
+**Rooted/Jailbroken devices:** Secure keychain may be compromised. Avoid storing sensitive credentials on modified devices.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chat Features" icon="messages" href="/mobile/chat-features">
+    Learn how to use the chat interface and message features
+  </Card>
+  <Card title="Permission System" icon="shield" href="/features/permission-system">
+    Understand the four permission modes in detail
+  </Card>
+  <Card title="Remote Access" icon="globe" href="/advanced/remote-access">
+    Set up ngrok for remote server access
+  </Card>
+  <Card title="Terminal Access" icon="terminal" href="/features/terminal-access">
+    Use the embedded terminal emulator
+  </Card>
+</CardGroup>

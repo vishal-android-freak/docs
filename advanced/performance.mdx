@@ -1,0 +1,1019 @@
+---
+title: "Performance Tuning"
+description: "Optimize CCC for speed, resource usage, and token efficiency"
+---
+
+## Overview
+
+CCC is designed to be lightweight and efficient, but performance can be affected by several factors: context size, session management, network conditions, and backend resources. This guide covers optimization strategies for every component of CCC.
+
+<Info>
+**Goal**: Minimize latency, reduce token usage, optimize resource consumption, and improve responsiveness across the entire system.
+</Info>
+
+---
+
+## Context Optimization
+
+Claude has a context window limit (200K tokens for Claude 3.5 Sonnet). Managing context efficiently is critical for performance and cost.
+
+### Monitor Context Usage
+
+**Check current context:**
+- Look for context indicator in Claude's responses
+- Claude warns when approaching limit: "Context is getting full..."
+
+**Approximate token counts:**
+- Average English word: ~1.3 tokens
+- Code file (500 lines): ~2000-3000 tokens
+- Chat message: ~100-500 tokens
+- Large file (2000 lines): ~8000-12000 tokens
+
+### Clear Context Strategically
+
+**When to clear:**
+
+<AccordionGroup>
+  <Accordion title="After major milestones" icon="flag-checkered">
+    Clear context when you've completed a feature or fixed a bug:
+
+    ```
+    You: "We've successfully implemented authentication. Let's start fresh for the next feature."
+    ```
+
+    **Result**: Next session starts with clean context, faster responses.
+  </Accordion>
+
+  <Accordion title="When approaching limit" icon="gauge-high">
+    Claude warns: "I'm approaching my context window limit..."
+
+    **Action**: Start new session immediately to avoid context overflow.
+
+    **Mobile app**: Sessions tab → New Session
+  </Accordion>
+
+  <Accordion title="When switching topics" icon="arrows-split-up-and-left">
+    Moving from frontend to backend work? Start fresh:
+
+    ```
+    Previous session: React component development
+    New session: Database schema design
+    ```
+
+    No need to carry frontend context into backend work.
+  </Accordion>
+
+  <Accordion title="After extensive debugging" icon="bug">
+    Debugging sessions accumulate lots of context:
+    - Multiple file reads
+    - Error messages
+    - Stack traces
+    - Failed attempts
+
+    **Solution**: After fixing issue, summarize solution and start new session.
+  </Accordion>
+</AccordionGroup>
+
+**How to clear:**
+1. Mobile app: Sessions tab → New Session
+2. Summarize important context for next session in first message
+
+<Tip>
+**Summarization Pattern**: Before starting new session, have Claude summarize key decisions, patterns, or context you want to preserve. Copy summary to new session's first message.
+</Tip>
+
+### Use Cache Tokens
+
+Claude supports prompt caching to reduce costs and latency for repeated content.
+
+**How it works:**
+- First time Claude sees content: Full token cost
+- Repeated content within 5 minutes: Heavily discounted cache tokens
+- Cache tokens are ~90% cheaper than regular tokens
+
+**What gets cached automatically:**
+- File contents you've read multiple times
+- Code context from previous messages
+- Project structure information
+
+**Optimization strategies:**
+
+<AccordionGroup>
+  <Accordion title="Read files once, reference many times" icon="file">
+    **Bad:**
+    ```
+    You: "Read src/app.ts and fix the bug"
+    Claude: [reads file, suggests fix]
+
+    You: "Actually, read src/app.ts again and try a different approach"
+    Claude: [reads same file again - full token cost]
+    ```
+
+    **Good:**
+    ```
+    You: "Read src/app.ts and show me where the bug might be"
+    Claude: [reads file, analyzes]
+
+    You: "Based on what you just read, try approach X"
+    Claude: [references cached content - cache token cost]
+    ```
+  </Accordion>
+
+  <Accordion title="Keep related work in same session" icon="layer-group">
+    Working on the same files? Stay in the same session (within 5 minutes):
+    - Cache tokens make subsequent operations cheaper
+    - Claude doesn't re-read the same files
+
+    **Example workflow:**
+    1. Read component file
+    2. Make changes (cached)
+    3. Add tests (cached)
+    4. Update docs (mostly cached)
+  </Accordion>
+
+  <Accordion title="Batch related requests" icon="boxes-stacked">
+    Instead of:
+    ```
+    You: "Read src/auth.ts"
+    You: "Read src/db.ts"
+    You: "Read src/api.ts"
+    ```
+
+    Do:
+    ```
+    You: "Read src/auth.ts, src/db.ts, and src/api.ts"
+    ```
+
+    All three files cached together, reusable in subsequent messages.
+  </Accordion>
+</AccordionGroup>
+
+### Minimize Redundant Reading
+
+**Avoid asking Claude to re-read files unnecessarily:**
+
+<CodeGroup>
+```text Bad
+You: "Read package.json and tell me the dependencies"
+Claude: [reads, lists dependencies]
+
+You: "Read package.json again and check if we have express"
+Claude: [reads same file again]
+```
+
+```text Good
+You: "Read package.json and tell me the dependencies"
+Claude: [reads, lists dependencies]
+
+You: "Do we have express in those dependencies?"
+Claude: [references previous read - no new file read]
+```
+</CodeGroup>
+
+**Trust Claude's memory** within a session—Claude remembers file contents already read.
+
+---
+
+## Session Management
+
+Efficient session management improves performance and organization.
+
+### When to Start New Session
+
+**Start fresh when:**
+
+<Steps>
+  <Step title="Switching projects">
+    Different project = different session
+
+    Each project has its own session history in CCC
+  </Step>
+
+  <Step title="Major context shift">
+    Frontend → Backend work
+    Feature development → Bug fixing
+    Implementation → Code review
+  </Step>
+
+  <Step title="Context approaching limit">
+    Claude warns about context window filling up
+  </Step>
+
+  <Step title="After long debugging session">
+    Debugging accumulates lots of failed attempts and error context
+  </Step>
+</Steps>
+
+**Stay in same session when:**
+- Working on related features
+- Making incremental changes
+- Within 5-minute windows (for cache benefits)
+- Continuing previous conversation
+
+### Message Pagination
+
+Long sessions can slow down mobile app loading.
+
+**CCC pagination:**
+- Mobile app loads messages in chunks
+- Initial load: Last 50 messages
+- Scroll up: Load previous 50 messages
+
+**Why pagination matters:**
+- Faster initial load
+- Lower memory usage on mobile
+- Smoother scrolling
+
+**Optimization:**
+- Keep sessions focused (don't let them grow to 1000+ messages)
+- Archive or delete old sessions periodically
+
+### Cleanup Old Sessions
+
+Remove sessions you no longer need.
+
+**Mobile app:**
+1. Sessions tab
+2. Swipe left on session
+3. Delete
+
+**Benefits:**
+- Faster session list loading
+- Lower disk usage
+- Easier to find relevant sessions
+
+**When to clean up:**
+- After completing features
+- Monthly maintenance
+- When session list becomes unwieldy
+
+**What gets deleted:**
+- Chat history
+- Session metadata
+- Permission history
+
+**What stays:**
+- Project files (unchanged)
+- Backend configuration
+
+---
+
+## Backend Performance
+
+Optimize CCC backend resource usage.
+
+### Memory Usage
+
+**Normal memory footprint:**
+- Idle: 50-80 MB
+- Active (1 connection): 80-120 MB
+- Active (5 connections): 150-250 MB
+
+**High memory usage causes:**
+
+<AccordionGroup>
+  <Accordion title="Message queue buildup" icon="list">
+    **Symptom**: Memory grows over time, doesn't decrease
+
+    **Cause**: Messages queued but not consumed (persistent sessions)
+
+    **Solution**: Use clean sessions (default in CCC)
+    ```bash
+    # Check memory
+    ps aux | grep ccc
+
+    # Restart backend to clear
+    pkill ccc && ccc
+    ```
+  </Accordion>
+
+  <Accordion title="Too many MQTT subscriptions" icon="rss">
+    **Symptom**: Memory increases with each connection
+
+    **Cause**: Subscriptions not cleaned up on disconnect
+
+    **Solution**: Ensure clients disconnect cleanly
+    - Mobile app: Close properly (don't force kill)
+    - Backend: Restart if subscriptions accumulate
+  </Accordion>
+
+  <Accordion title="Logging overhead" icon="file-lines">
+    **Symptom**: Memory grows during active sessions
+
+    **Cause**: Debug logs stored in memory buffers
+
+    **Solution**: Use appropriate log level
+    ```bash
+    # Production
+    ccc --log-level info
+
+    # Development
+    ccc --log-level debug
+
+    # No logging (fastest)
+    ccc --log-level error
+    ```
+  </Accordion>
+
+  <Accordion title="Large message payloads" icon="database">
+    **Symptom**: Memory spikes when sending large messages
+
+    **Cause**: Large file contents, images, terminal output
+
+    **Solution**: CCC handles this automatically
+    - Images compressed before sending
+    - Terminal output chunked
+    - Message size limits enforced
+  </Accordion>
+</AccordionGroup>
+
+**Memory limits:**
+
+```bash
+# Set max memory (512 MB)
+node --max-old-space-size=512 $(which ccc)
+
+# Monitor memory
+watch -n 1 'ps aux | grep ccc'
+```
+
+### CPU Usage
+
+**Normal CPU usage:**
+- Idle: &lt;1%
+- Message processing: 5-10%
+- Terminal output streaming: 10-20%
+
+**High CPU causes:**
+
+<AccordionGroup>
+  <Accordion title="Terminal output flooding" icon="terminal">
+    **Symptom**: CPU at 50-100% during terminal use
+
+    **Cause**: Commands with massive output (e.g., `cat /dev/urandom`)
+
+    **Solution**:
+    - Avoid commands with infinite output
+    - Use pagination (`less`, `head`, `tail`)
+    - Kill runaway processes in terminal
+  </Accordion>
+
+  <Accordion title="MQTT message storms" icon="bolt">
+    **Symptom**: High CPU during active chatting
+
+    **Cause**: Too many messages per second
+
+    **Solution**: CCC handles this, but if you're building custom features:
+    - Rate limit: Max 100 messages/second
+    - Batch messages when possible
+    - Use QoS 0 for high-frequency updates
+  </Accordion>
+
+  <Accordion title="Logging overhead" icon="file-pen">
+    **Symptom**: CPU higher with debug logging
+
+    **Cause**: Disk I/O for log writes
+
+    **Solution**:
+    ```bash
+    # Reduce logging
+    ccc --log-level warn
+
+    # Or disable logging
+    ccc --log-level error
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Process Limits
+
+**Concurrent connections:**
+- Default: No hard limit
+- Recommended: 10 per backend
+- Tested: Up to 50 connections
+
+**Why limit connections:**
+- Each connection uses memory (~20 MB)
+- Too many connections slow down message routing
+- Risk of resource exhaustion
+
+**Terminal sessions:**
+- Max per project: 5 (enforced)
+- Each terminal spawns node-pty process
+- High resource usage per terminal
+
+### Log Levels
+
+Choose appropriate log level for your scenario.
+
+| Level | Output | Use Case | Performance Impact |
+|-------|--------|----------|-------------------|
+| `error` | Errors only | Production | Minimal |
+| `warn` | Errors + warnings | Production | Low |
+| `info` | General info | Development | Medium |
+| `debug` | Everything | Troubleshooting | High |
+
+```bash
+# Set via CLI
+ccc --log-level info
+
+# Set via env
+LOG_LEVEL=info ccc
+```
+
+**Recommendation:**
+- Production: `info` or `warn`
+- Development: `debug`
+- Performance testing: `error`
+
+---
+
+## Mobile App Performance
+
+Optimize the mobile app for responsiveness.
+
+### Message Caching
+
+CCC mobile app caches messages locally for offline viewing.
+
+**Cache behavior:**
+- Messages stored in device storage
+- Available offline
+- Synced on reconnect
+
+**Cache size:**
+- Default: 1000 messages per session
+- Older messages loaded on demand
+
+**Benefits:**
+- Instant session switching
+- Offline message viewing
+- Lower network usage
+
+### Image Compression
+
+Images are automatically compressed before sending.
+
+**Compression strategy:**
+- **Quality**: 80% (good balance)
+- **Max dimensions**: 1920x1080
+- **Format**: JPEG for photos, PNG for screenshots
+
+**Size reduction examples:**
+- 5 MB photo → 500 KB (~90% reduction)
+- 2 MB screenshot → 300 KB (~85% reduction)
+
+**Impact:**
+- Faster uploads
+- Lower bandwidth usage
+- Smoother experience on mobile data
+
+<Tip>
+For best performance, resize images before attaching:
+- Use built-in photo editor to crop
+- Reduce resolution if not needed
+- Convert to JPEG if possible
+</Tip>
+
+### Pagination
+
+Messages loaded in chunks to avoid memory issues.
+
+**Loading strategy:**
+1. Initial load: 50 most recent messages
+2. Scroll up: Load previous 50
+3. Search: Load matching messages only
+
+**Benefits:**
+- Fast initial load (&lt; 1 second)
+- Low memory footprint
+- Smooth scrolling
+
+**Optimizing:**
+- Keep sessions under 500 messages
+- Archive old sessions
+- Delete unused sessions
+
+### Background Behavior
+
+Mobile OS suspends apps in background to save battery.
+
+**iOS:**
+- App suspended after 30 seconds
+- Background refresh (if enabled) keeps connection alive
+- Push notifications wake app
+
+**Android:**
+- Background service maintains connection
+- Battery optimization may kill connection
+- Foreground service option (prevents suspension)
+
+**Optimization:**
+
+<Steps>
+  <Step title="Enable background refresh (iOS)">
+    Settings → CCC → Background App Refresh → On
+  </Step>
+
+  <Step title="Disable battery optimization (Android)">
+    Settings → Apps → CCC → Battery → Unrestricted
+  </Step>
+
+  <Step title="Use foreground service (Android)">
+    CCC Settings → Keep connection alive → Enable
+  </Step>
+</Steps>
+
+**Trade-offs:**
+- Better connectivity = Higher battery drain
+- Suspended app = Connection drops, must reconnect
+
+---
+
+## Network Optimization
+
+Optimize network communication for speed and reliability.
+
+### QoS Selection
+
+MQTT Quality of Service affects performance.
+
+| QoS | Latency | Bandwidth | Reliability | Use Case |
+|-----|---------|-----------|-------------|----------|
+| **0** | Lowest | Lowest | Fire and forget | Non-critical updates |
+| **1** | Medium | Medium | At least once | Chat messages (default) |
+| **2** | Highest | Highest | Exactly once | Critical transactions |
+
+**CCC default: QoS 1** (best balance)
+
+**When to use QoS 0:**
+```bash
+# High-frequency, non-critical messages
+MQTT_QOS=0 ccc
+```
+
+**Examples:**
+- Live typing indicators
+- Cursor positions
+- Read receipts
+- Status updates
+
+**When to use QoS 2:**
+```bash
+# Critical operations only
+MQTT_QOS=2 ccc
+```
+
+**Examples:**
+- Financial transactions
+- Session deletion
+- Irreversible operations
+
+### Message Size
+
+Keep message payloads small for faster transmission.
+
+**Size limits:**
+- Max packet: 1 MB (mobile app)
+- Max packet: 10 MB (backend)
+- Recommended: &lt; 100 KB per message
+
+**Large payload handling:**
+
+<AccordionGroup>
+  <Accordion title="Images" icon="image">
+    **Compression** (automatic):
+    - JPEG quality: 80%
+    - Max dimensions: 1920x1080
+    - Result: 500 KB average
+
+    **Manual optimization:**
+    - Crop unnecessary parts
+    - Reduce resolution
+    - Use appropriate format (JPEG vs PNG)
+  </Accordion>
+
+  <Accordion title="Code files" icon="code">
+    **Reading large files:**
+    ```
+    Bad: "Read entire 5000-line file"
+    Good: "Read lines 100-200 of large-file.ts"
+    ```
+
+    Use line ranges to minimize data transfer.
+  </Accordion>
+
+  <Accordion title="Terminal output" icon="terminal">
+    **Chunking** (automatic):
+    - Output sent in 4 KB chunks
+    - Prevents message size overflow
+    - Streaming display in app
+
+    **Optimization:**
+    - Use pagination (`less`, `head`, `tail`)
+    - Avoid massive output commands
+    - Redirect output to files if needed
+  </Accordion>
+
+  <Accordion title="Chat messages" icon="message">
+    **Keep messages focused:**
+    ```
+    Bad: "Read all 50 files and analyze everything"
+    Good: "Read src/app.ts and check for bug in line 42"
+    ```
+
+    Specific requests = smaller responses = faster performance.
+  </Accordion>
+</AccordionGroup>
+
+### Compression
+
+MQTT doesn't have built-in compression, but CCC implements application-level compression.
+
+**What's compressed:**
+- Images (JPEG/PNG compression)
+- Large text payloads (gzip for >10 KB)
+- Terminal output (chunked)
+
+**What's not compressed:**
+- Small messages (&lt; 10 KB)
+- Already compressed data (images, videos)
+- Real-time streams (added latency)
+
+---
+
+## Tool Usage
+
+Choose the right tools for better performance.
+
+### Avoid Expensive Tools
+
+Some tools are resource-intensive.
+
+<AccordionGroup>
+  <Accordion title="Task tool" icon="list-check">
+    **What it does**: Launches sub-agent (separate Claude instance)
+
+    **Cost**:
+    - Additional API calls
+    - Separate context window
+    - Complex coordination overhead
+
+    **When to use**: Multi-step operations that benefit from isolation
+
+    **Alternative**: Break down task and handle in main session
+  </Accordion>
+
+  <Accordion title="Bash with large output" icon="terminal">
+    **Problem**: Commands with massive output
+
+    **Examples:**
+    ```bash
+    npm install --verbose  # Thousands of lines
+    find / -name "*.js"    # Entire filesystem
+    cat /dev/urandom       # Infinite output
+    ```
+
+    **Impact**:
+    - Floods terminal output stream
+    - High CPU usage
+    - Large messages
+
+    **Solutions:**
+    - Use quiet flags: `npm install --silent`
+    - Limit output: `find . -name "*.js" | head -100`
+    - Redirect: `command > output.log`
+  </Accordion>
+
+  <Accordion title="WebSearch" icon="magnifying-glass">
+    **Cost**: External API call + parsing web results
+
+    **Latency**: 2-5 seconds
+
+    **When to use**: When you need current information
+
+    **Alternative**: Provide information directly in message
+  </Accordion>
+
+  <Accordion title="WebFetch" icon="globe">
+    **Cost**: HTTP request + content parsing
+
+    **Latency**: 1-3 seconds per URL
+
+    **When to use**: Fetching specific pages/docs
+
+    **Alternative**: Copy content directly into message
+  </Accordion>
+</AccordionGroup>
+
+### Prefer Read over Grep for Single Files
+
+**Grep:**
+- Searches across multiple files
+- Regex parsing overhead
+- Returns matches from many files
+
+**Read:**
+- Direct file read
+- No pattern matching
+- Returns specific file
+
+**Comparison:**
+
+<CodeGroup>
+```text Grep (slower)
+You: "Search for 'authenticate' in the codebase"
+Claude: [uses Grep across all files]
+→ 2-5 seconds, many results
+```
+
+```text Read (faster)
+You: "Read src/auth.ts and find the authenticate function"
+Claude: [reads specific file]
+→ &lt;1 second, targeted result
+```
+</CodeGroup>
+
+**When to use Grep:**
+- Don't know which file contains code
+- Need to find all occurrences
+- Pattern matching across codebase
+
+**When to use Read:**
+- Know the file path
+- Want to see full file context
+- Faster response needed
+
+---
+
+## Benchmarks
+
+Expected performance metrics for CCC.
+
+### Response Times
+
+| Operation | Expected Latency | Notes |
+|-----------|------------------|-------|
+| Send message | &lt; 100 ms | Local network |
+| Send message (ngrok) | 200-500 ms | Depends on region |
+| Claude response (simple) | 2-5 seconds | API latency |
+| Claude response (complex) | 5-15 seconds | Large context |
+| File read | &lt; 1 second | &lt; 1000 lines |
+| File edit | &lt; 2 seconds | Includes approval |
+| Bash command | 1-10 seconds | Depends on command |
+| Terminal connect | &lt; 500 ms | Session setup |
+| Session load | &lt; 1 second | 50 messages |
+| Session switch | &lt; 500 ms | Cached sessions |
+
+### Token Usage Rates
+
+**Typical session (100 messages):**
+- Input tokens: 50,000-100,000
+- Output tokens: 20,000-40,000
+- Cache tokens: 30,000-60,000 (after first few messages)
+
+**Cost example** (Claude 3.5 Sonnet):
+- Input: $3 per million tokens
+- Output: $15 per million tokens
+- Cache tokens: $0.30 per million tokens
+
+**100-message session cost:**
+- Without caching: $0.90-$1.80
+- With caching: $0.40-$0.80
+
+**Optimization impact:**
+- Good context management: 50% cost reduction
+- Cache token usage: 60% cost reduction on repeated content
+
+---
+
+## Monitoring
+
+Track CCC performance over time.
+
+### Resource Usage
+
+**Backend monitoring:**
+
+```bash
+# CPU and memory
+top -p $(pgrep -f ccc)
+
+# Detailed stats
+ps aux | grep ccc
+
+# Network connections
+netstat -an | grep 8883
+```
+
+**Mobile app monitoring:**
+- Settings → Diagnostics → Performance Stats
+- Shows: Memory usage, message count, connection uptime
+
+### Connection Health
+
+**Indicators:**
+
+<Steps>
+  <Step title="Green dot (connected)">
+    Normal: Latency &lt; 200ms, no packet loss
+  </Step>
+
+  <Step title="Yellow dot (unstable)">
+    Warning: Latency > 500ms or occasional disconnects
+  </Step>
+
+  <Step title="Red dot (disconnected)">
+    Error: No connection, needs troubleshooting
+  </Step>
+</Steps>
+
+**Diagnostics:**
+```bash
+# Ping backend
+ping 192.168.1.100
+
+# Test WebSocket connection
+wscat -c ws://192.168.1.100:8883/mqtt
+
+# Check MQTT broker
+mosquitto_sub -h localhost -p 8884 -t '#' -v
+```
+
+### Error Rates
+
+**Acceptable rates:**
+- Connection errors: &lt; 1% of messages
+- Permission timeouts: &lt; 0.1%
+- Tool failures: &lt; 5%
+
+**High error rates indicate:**
+- Network issues
+- Backend overload
+- Configuration problems
+
+**Check backend logs:**
+```bash
+ccc --log-level info 2>&1 | tee ccc.log
+grep -i error ccc.log
+```
+
+---
+
+## Performance Checklist
+
+Use this checklist to optimize your CCC setup:
+
+### Context Management
+
+- [ ] Start new session when context gets full
+- [ ] Summarize key points before switching sessions
+- [ ] Avoid re-reading the same files repeatedly
+- [ ] Trust Claude's memory within a session
+- [ ] Keep sessions focused on related tasks
+
+### Session Management
+
+- [ ] Create new session for major context shifts
+- [ ] Clean up old sessions monthly
+- [ ] Limit sessions to 500 messages or less
+- [ ] Use pagination (automatic in app)
+
+### Backend Optimization
+
+- [ ] Use appropriate log level (info for production)
+- [ ] Monitor memory usage (should be &lt; 500 MB)
+- [ ] Restart backend weekly in production
+- [ ] Limit concurrent connections to 10
+- [ ] Use QoS 1 for most operations
+
+### Mobile App Optimization
+
+- [ ] Enable background refresh (iOS)
+- [ ] Disable battery optimization (Android)
+- [ ] Compress images before sending
+- [ ] Archive old sessions
+- [ ] Use WiFi for large operations
+
+### Network Optimization
+
+- [ ] Use local network when possible (faster than ngrok)
+- [ ] Keep message sizes under 100 KB
+- [ ] Use appropriate QoS level
+- [ ] Monitor connection health (green dot)
+
+### Tool Usage
+
+- [ ] Prefer Read over Grep for single files
+- [ ] Avoid Task tool unless necessary
+- [ ] Limit Bash output (use --silent flags)
+- [ ] Be specific in requests (reduce response size)
+
+---
+
+## Troubleshooting Performance Issues
+
+<AccordionGroup>
+  <Accordion title="Slow response times" icon="hourglass">
+    **Symptoms**: Claude takes 30+ seconds to respond
+
+    **Causes:**
+    1. Context window nearly full
+    2. Network latency (ngrok or poor connection)
+    3. Complex request requiring lots of tool use
+
+    **Solutions:**
+    - Start new session to clear context
+    - Check network latency: `ping backend-ip`
+    - Simplify request (ask for one thing at a time)
+    - Use local network instead of ngrok
+  </Accordion>
+
+  <Accordion title="High backend memory usage" icon="memory">
+    **Symptoms**: Backend using > 500 MB RAM
+
+    **Causes:**
+    1. Message queue buildup
+    2. Memory leak
+    3. Too many connections
+
+    **Solutions:**
+    ```bash
+    # Restart backend
+    pkill ccc && ccc
+
+    # Limit connections
+    # (no built-in limit, manage externally)
+
+    # Monitor memory
+    watch -n 1 'ps aux | grep ccc'
+    ```
+  </Accordion>
+
+  <Accordion title="Frequent disconnections" icon="wifi-slash">
+    **Symptoms**: Connection drops every few minutes
+
+    **Causes:**
+    1. Mobile device sleeping
+    2. Network instability
+    3. Keep-alive too long
+
+    **Solutions:**
+    - Enable background app refresh (iOS)
+    - Disable battery optimization (Android)
+    - Reduce keep-alive: Settings → Advanced → Keep-Alive → 30s
+    - Use WiFi instead of mobile data
+  </Accordion>
+
+  <Accordion title="Laggy terminal output" icon="terminal">
+    **Symptoms**: Terminal output appears slowly
+
+    **Causes:**
+    1. Command producing massive output
+    2. Network latency
+    3. Backend CPU overload
+
+    **Solutions:**
+    - Kill runaway command: Ctrl+C in terminal
+    - Use pagination: `command | less`
+    - Limit output: `command | head -100`
+    - Check backend CPU: `top -p $(pgrep -f ccc)`
+  </Accordion>
+
+  <Accordion title="High token costs" icon="dollar-sign">
+    **Symptoms**: Claude API costs higher than expected
+
+    **Causes:**
+    1. Not using cache tokens effectively
+    2. Reading same files repeatedly
+    3. Long sessions with accumulated context
+
+    **Solutions:**
+    - Keep related work in same session (cache benefits)
+    - Start new session when switching topics
+    - Reference previous reads instead of re-reading
+    - Monitor token usage in Claude dashboard
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Session Management" icon="clock" href="/features/session-management">
+    Deep dive into session lifecycle and management
+  </Card>
+
+  <Card title="MQTT Configuration" icon="network-wired" href="/advanced/mqtt-configuration">
+    Advanced MQTT tuning for performance
+  </Card>
+
+  <Card title="Troubleshooting" icon="wrench" href="/reference/troubleshooting">
+    Common issues and solutions
+  </Card>
+
+  <Card title="CLI Reference" icon="terminal" href="/reference/cli-commands">
+    Complete command-line options for tuning
+  </Card>
+</CardGroup>

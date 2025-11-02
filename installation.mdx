@@ -1,0 +1,313 @@
+---
+title: "Installation"
+description: "Install CCC backend server and mobile app for iOS or Android in under 5 minutes"
+---
+
+## Prerequisites
+
+Before installing CCC, ensure you have:
+
+<AccordionGroup>
+  <Accordion title="Claude Pro or Max Subscription" icon="sparkles">
+    CCC requires an active Claude Pro ($20/month) or Max ($200/month) subscription. [Sign up here](https://claude.com/upgrade).
+  </Accordion>
+
+  <Accordion title="Claude Code CLI" icon="terminal">
+    Install Claude Code on your development machine:
+    ```bash
+    npm install -g @anthropic-ai/claude-code
+    # or
+    pip install claude-code
+    ```
+    Verify installation: `claude --version`
+  </Accordion>
+
+  <Accordion title="Node.js v20+" icon="node-js">
+    CCC backend requires Node.js v20.0.0 or higher.
+    ```bash
+    node --version  # Should show v20.0.0 or higher
+    ```
+    Download from [nodejs.org](https://nodejs.org) if needed.
+  </Accordion>
+
+  <Accordion title="Supported Operating System" icon="desktop">
+    - **macOS**: 10.15 (Catalina) or later
+    - **Linux**: Ubuntu 20.04+, Debian 11+, or equivalent
+    - **Windows**: Windows 10/11 with WSL2 (recommended) or native Node.js
+  </Accordion>
+</AccordionGroup>
+
+<Info>
+**Port Requirements**: CCC uses ports 8883 (router), 8884 (MQTT), and 3001 (terminal) by default. Ensure these ports are available or use [custom ports](/reference/cli-commands#port-configuration).
+</Info>
+
+---
+
+## Backend Installation
+
+Install the CCC backend server on your development machine:
+
+<CodeGroup>
+```bash npm (Global Install)
+# Install globally (recommended for regular use)
+npm install -g @naarang/ccc
+
+# Verify installation
+ccc --version
+```
+
+```bash npx (No Install)
+# Run without installing (try it out first)
+npx @naarang/ccc
+
+# No version check needed (always uses latest)
+```
+
+```bash Homebrew (macOS/Linux)
+# Coming soon
+brew tap naarang/ccc
+brew install ccc
+
+# Verify installation
+ccc --version
+```
+
+</CodeGroup>
+
+### Verify Backend Installation
+
+Test that the backend is properly installed:
+
+```bash
+# Check version
+ccc --version
+# Should output: CCC v1.1.1 (or later)
+
+# Test run (will start and prompt for configuration)
+ccc
+# Press Ctrl+C to stop after seeing startup messages
+```
+
+<Tip>
+If you encounter permission errors on Linux/macOS, you may need to use `sudo npm install -g @naarang/ccc` or configure npm to install global packages without sudo ([guide here](https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally)).
+</Tip>
+
+---
+
+## Mobile App Installation
+
+Install the CCC mobile app on your iOS or Android device:
+
+<Tabs>
+  <Tab title="iOS (iPhone/iPad)">
+    ### App Store Installation
+
+    1. Open the **App Store** on your iOS device
+    2. Search for **"CCC - Claude Code Chat"** or [use this direct link](https://apps.apple.com/app/id6753870766)
+    3. Tap **Get** and authenticate with Face ID/Touch ID/Password
+    4. Wait for installation to complete
+
+    ![iOS App Store listing for CCC](images/ios-app-store.png)
+    
+
+    ### System Requirements
+    - iOS 13.0 or later
+    - iPhone 6s or newer
+    - iPad Air 2 or newer
+    - ~50MB storage space
+
+    <Info>
+    The iOS app is optimized for both iPhone and iPad with native tablet layouts.
+    </Info>
+  </Tab>
+
+  <Tab title="Android">
+    ### Google Play Installation
+
+    1. Open **Google Play Store** on your Android device
+    2. Search for **"CCC - Claude Code Chat"** or [use this direct link](https://play.google.com/store/apps/details?id=com.naarang.ccc)
+    3. Tap **Install**
+    4. Wait for installation to complete
+
+    ![Android Google Play listing for CCC](images/android-play-store.png)
+    
+
+    ### System Requirements
+    - Android 6.0 (Marshmallow) or later
+    - ~50MB storage space
+    - Internet connection (Wi-Fi or cellular)
+
+  </Tab>
+</Tabs>
+
+---
+
+## Verify Installation
+
+After installing both components, verify everything is working:
+
+### 1. Start the Backend
+
+On your development machine:
+
+```bash
+ccc
+```
+
+You should see output like:
+
+```plaintext
+🚀 CCC v1.1.1 starting...
+✓ MQTT Broker started on port 8884
+✓ Path Router started on port 8883
+✓ Terminal Server started on port 3001
+✓ Backend MQTT client connected
+
+📱 Mobile App Configuration:
+   Server URL: ws://your-ip-address:8883/mqtt
+   Username: (optional - not configured)
+   Password: (optional - not configured)
+
+💻 Terminal Access:
+   URL: http://localhost:3001
+   Username: aBcDeF1234567890...
+   Password: XyZ9876543210...
+
+✅ CCC is ready! Connect your mobile app.
+```
+
+<Tip>
+Copy the "Server URL" shown in the output—you'll need it for mobile app setup.
+</Tip>
+
+### 2. Connect Mobile App
+
+On your mobile device:
+
+1. Open the **CCC app**
+2. Complete the 3-screen onboarding tutorial
+3. Tap **"Create Server Profile"**
+4. Enter the server URL from backend output (e.g., `ws://192.168.1.100:8883/mqtt`)
+5. Leave username/password blank (for now)
+6. Tap **"Connect"**
+7. Create your first project
+
+![Mobile app server setup screen](images/mobile-server-setup.png)
+
+### 3. Test Connection
+
+Send a test message:
+
+```
+You: "Hello Claude!"
+Claude: "Hello! I'm ready to help with your coding tasks..."
+```
+
+If you see Claude's response streaming in real-time, everything is working correctly!
+
+<Check>
+**Success!** You're now ready to use CCC. Continue to the [Quickstart Guide](/quickstart) for your first coding session.
+</Check>
+
+---
+
+## Troubleshooting Installation Issues
+
+<AccordionGroup>
+  <Accordion title="Backend won't start - Port already in use" icon="triangle-exclamation">
+    **Problem**: `Error: listen EADDRINUSE: address already in use :::8883`
+
+    **Solution**: Another process is using the default port. Either:
+    1. Stop the conflicting process
+    2. Use custom ports:
+       ```bash
+       ccc --router-port 9883 --mqtt-port 9884 --terminal-port 9001
+       ```
+  </Accordion>
+
+  <Accordion title="Mobile app can't connect" icon="signal-slash">
+    **Problem**: "Connection failed" or "Cannot reach server"
+
+    **Solutions**:
+    1. **Check network**: Ensure mobile device and dev machine are on the same WiFi network
+    2. **Verify URL**: Double-check the server URL (must start with `ws://` or `wss://`)
+    3. **Check firewall**: Allow ports 8883 and 8884 in your firewall
+    4. **Test connectivity**: `ping <dev-machine-ip>` from mobile device
+    5. **Check backend logs**: Look for connection attempts in backend terminal
+  </Accordion>
+
+  <Accordion title="Permission errors on npm install" icon="lock">
+    **Problem**: `EACCES: permission denied` when installing globally
+
+    **Solution**: Configure npm to install global packages without sudo:
+    ```bash
+    mkdir ~/.npm-global
+    npm config set prefix '~/.npm-global'
+    echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+    source ~/.bashrc
+    npm install -g @naarang/ccc
+    ```
+  </Accordion>
+
+  <Accordion title="Claude Code not found" icon="terminal">
+    **Problem**: `claude: command not found` when backend tries to spawn Claude
+
+    **Solution**: Ensure Claude Code is installed and in your PATH:
+    ```bash
+    # Check if Claude is installed
+    which claude
+
+    # If not found, install it
+    npm install -g @anthropic-ai/claude-code
+
+    # Or add to PATH if installed elsewhere
+    export PATH="/path/to/claude:$PATH"
+    ```
+  </Accordion>
+
+  <Accordion title="Node.js version too old" icon="node-js">
+    **Problem**: `Error: The engine "node" is incompatible with this module`
+
+    **Solution**: Upgrade Node.js to v20+:
+    ```bash
+    # Using nvm (recommended)
+    nvm install 20
+    nvm use 20
+
+    # Or download from nodejs.org
+    # https://nodejs.org/en/download
+    ```
+  </Accordion>
+
+  <Accordion title="iOS app not appearing in App Store" icon="apple">
+    **Problem**: Can't find CCC in App Store search
+
+    **Solution**:
+    1. Ensure your region is supported (currently available in US, EU, UK, Canada)
+    2. Use the [direct App Store link](https://apps.apple.com/app/id6753870766)
+    3. Check your iOS version is 13.0 or later
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+Still having issues? Check the comprehensive [Troubleshooting Guide](/reference/troubleshooting) or [ask for help on Discord](https://discord.gg/9EjE8t4YCF).
+</Note>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+    Complete your first coding session with CCC (10 minutes)
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/core-concepts">
+    Understand sessions, projects, and how CCC works
+  </Card>
+  <Card title="Permission System" icon="shield" href="/features/permission-system">
+    Configure what tools Claude can use
+  </Card>
+  <Card title="Remote Access" icon="globe" href="/advanced/remote-access">
+    Set up ngrok for access from anywhere
+  </Card>
+</CardGroup>

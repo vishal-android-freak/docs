@@ -1,0 +1,885 @@
+---
+title: "MQTT Message Formats"
+description: "TypeScript interfaces and JSON examples for all MQTT message types"
+---
+
+## Overview
+
+All MQTT messages in CCC are **JSON-encoded strings**. This reference documents every message format used for chat requests, permission handling, session management, and system operations.
+
+<Info>
+Messages follow strict TypeScript interfaces defined in the backend and mobile app. Invalid messages are logged and rejected by the recipient.
+</Info>
+
+---
+
+## Chat Messages
+
+### Chat Request
+
+Sent from mobile app to backend when user submits a message.
+
+**TypeScript Interface:**
+
+```typescript
+interface ChatRequest {
+  message: string;
+  projectPath: string;
+  sessionId?: string;
+  permissionMode?: PermissionMode;
+  attachments?: Attachment[];
+}
+
+type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'bypassPermissions';
+
+interface Attachment {
+  type: 'image';
+  mimeType: string; // 'image/png', 'image/jpeg', 'image/gif', 'image/webp'
+  data: string; // base64-encoded image
+  filename?: string;
+}
+```
+
+**JSON Example (Text Only):**
+
+```json
+{
+  "message": "Create a new React component for user profiles",
+  "projectPath": "/home/user/my-app",
+  "sessionId": "20241102_153045_abc123",
+  "permissionMode": "default"
+}
+```
+
+**JSON Example (With Image Attachment):**
+
+```json
+{
+  "message": "Implement this design mockup",
+  "projectPath": "/home/user/my-app",
+  "sessionId": "20241102_153045_abc123",
+  "permissionMode": "acceptEdits",
+  "attachments": [
+    {
+      "type": "image",
+      "mimeType": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "filename": "design-mockup.png"
+    }
+  ]
+}
+```
+
+<Note>
+- **sessionId** is optional. If omitted, backend uses the last cached session for this project or creates a new one.
+- **permissionMode** defaults to `'default'` if not provided.
+- **attachments** supports up to 30MB total, 5MB per image, max 8000x8000 dimensions.
+</Note>
+
+### Chat Response
+
+Sent from backend to mobile app as Claude processes the request. Multiple messages are sent per request.
+
+**TypeScript Interface:**
+
+```typescript
+interface ChatResponse {
+  type: 'session' | 'chunk' | 'complete' | 'error';
+  content?: string;
+  sessionId?: string;
+  error?: string;
+}
+```
+
+**Response Types:**
+
+<Tabs>
+  <Tab title="Session">
+    **Session ID Message** (sent first)
+
+    Provides the session ID for this conversation. Sent once at the start of each request.
+
+    ```json
+    {
+      "type": "session",
+      "sessionId": "20241102_153045_abc123"
+    }
+    ```
+  </Tab>
+
+  <Tab title="Chunk">
+    **Streaming Chunk** (sent multiple times)
+
+    Contains a JSONL line from Claude Code's headless output. The mobile app parses these chunks in real-time to display streaming responses.
+
+    ```json
+    {
+      "type": "chunk",
+      "content": "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll help you create a user profile component.\"}]}}\n"
+    }
+    ```
+
+    <Note>
+    The `content` field is a **raw JSONL string** (not a parsed object). The mobile app must parse it to extract the actual Claude message.
+    </Note>
+  </Tab>
+
+  <Tab title="Complete">
+    **Completion Message** (sent last)
+
+    Signals that Claude has finished processing. May contain the final aggregated content or be empty.
+
+    ```json
+    {
+      "type": "complete",
+      "content": ""
+    }
+    ```
+  </Tab>
+
+  <Tab title="Error">
+    **Error Message** (sent on failure)
+
+    Indicates an error occurred during processing.
+
+    ```json
+    {
+      "type": "error",
+      "error": "Failed to start Claude process: ENOENT - claude command not found"
+    }
+    ```
+
+    <Warning>
+    Common errors: `claude command not found`, `Project directory does not exist`, `Attachment validation failed`, `A request is already in progress for this project`.
+    </Warning>
+  </Tab>
+</Tabs>
+
+### Chat Cancel
+
+Sent from mobile app to backend to cancel the currently running Claude request.
+
+**JSON Example:**
+
+```json
+{
+  "timestamp": 1698765432000
+}
+```
+
+Published to: `chat/{projectId}/cancel`
+
+---
+
+## Permission Messages
+
+### Permission Request
+
+Sent from backend to mobile app when Claude attempts to use a tool that requires approval.
+
+**TypeScript Interface:**
+
+```typescript
+interface PermissionRequest {
+  tool_name: string;
+  tool_input: any;
+  session_id: string;
+  cwd: string;
+  timestamp: number;
+  project_id?: string;
+}
+```
+
+**JSON Examples:**
+
+<CodeGroup>
+```json Read Tool
+{
+  "tool_name": "Read",
+  "tool_input": {
+    "file_path": "/home/user/my-app/src/App.tsx"
+  },
+  "session_id": "20241102_153045_abc123",
+  "cwd": "/home/user/my-app",
+  "timestamp": 1698765432000,
+  "project_id": "my-app-123"
+}
+```
+
+```json Bash Tool
+{
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "npm install react-router-dom",
+    "description": "Install React Router library"
+  },
+  "session_id": "20241102_153045_abc123",
+  "cwd": "/home/user/my-app",
+  "timestamp": 1698765432000,
+  "project_id": "my-app-123"
+}
+```
+
+```json Edit Tool
+{
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "/home/user/my-app/src/components/Profile.tsx",
+    "old_string": "const Profile = () => {",
+    "new_string": "const Profile: React.FC = () => {"
+  },
+  "session_id": "20241102_153045_abc123",
+  "cwd": "/home/user/my-app",
+  "timestamp": 1698765432000,
+  "project_id": "my-app-123"
+}
+```
+</CodeGroup>
+
+### Permission Response
+
+Sent from mobile app to backend with the user's decision.
+
+**TypeScript Interface:**
+
+```typescript
+interface PermissionResponse {
+  decision: 'allow' | 'deny';
+  reason?: string;
+  timestamp: number;
+  permissionMode?: string;
+  addToAllowedTools?: boolean;
+}
+```
+
+**JSON Examples:**
+
+<CodeGroup>
+```json Allow Once
+{
+  "decision": "allow",
+  "timestamp": 1698765432123
+}
+```
+
+```json Allow & Don't Ask Again
+{
+  "decision": "allow",
+  "timestamp": 1698765432123,
+  "addToAllowedTools": true
+}
+```
+
+```json Deny
+{
+  "decision": "deny",
+  "reason": "User denied permission",
+  "timestamp": 1698765432123
+}
+```
+
+```json Switch to Accept Edits Mode
+{
+  "decision": "allow",
+  "timestamp": 1698765432123,
+  "permissionMode": "acceptEdits"
+}
+```
+</CodeGroup>
+
+<Tip>
+Setting `addToAllowedTools: true` adds the tool (and optionally the specific command) to `settings.local.json`, preventing future prompts for that tool.
+</Tip>
+
+---
+
+## Session Messages
+
+### Session List Request
+
+Request all sessions for a specific project path.
+
+**TypeScript Interface:**
+
+```typescript
+interface SessionListRequest {
+  projectPath: string;
+  clientId: string;
+  timestamp: number;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "projectPath": "/home/user/my-app",
+  "clientId": "mobile_my-app-123",
+  "timestamp": 1698765432000
+}
+```
+
+### Session List Response
+
+Returns array of session metadata for the requested project.
+
+**TypeScript Interface:**
+
+```typescript
+interface SessionListResponse {
+  sessions: SessionMetadata[];
+  projectPath: string;
+  timestamp: number;
+}
+
+interface SessionMetadata {
+  sessionId: string;
+  title: string;
+  lastActivity: string;
+  messageCount: number;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "sessions": [
+    {
+      "sessionId": "20241102_153045_abc123",
+      "title": "Create user profile component",
+      "lastActivity": "2024-11-02T15:32:18.000Z",
+      "messageCount": 12
+    },
+    {
+      "sessionId": "20241101_094520_xyz789",
+      "title": "Fix navigation bug",
+      "lastActivity": "2024-11-01T10:15:33.000Z",
+      "messageCount": 8
+    }
+  ],
+  "projectPath": "/home/user/my-app",
+  "timestamp": 1698765432123
+}
+```
+
+### Session Count Request
+
+Batch request for session counts across multiple projects.
+
+**TypeScript Interface:**
+
+```typescript
+interface SessionCountRequest {
+  projectPaths: string[];
+  clientId: string;
+  timestamp: number;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "projectPaths": [
+    "/home/user/my-app",
+    "/home/user/other-app",
+    "/home/user/third-app"
+  ],
+  "clientId": "mobile_batch-123",
+  "timestamp": 1698765432000
+}
+```
+
+### Session Count Response
+
+Returns count of sessions for each requested project.
+
+**TypeScript Interface:**
+
+```typescript
+interface SessionCountResponse {
+  projects: ProjectSessionCount[];
+  timestamp: number;
+}
+
+interface ProjectSessionCount {
+  projectPath: string;
+  sessionCount: number;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "projects": [
+    {
+      "projectPath": "/home/user/my-app",
+      "sessionCount": 15
+    },
+    {
+      "projectPath": "/home/user/other-app",
+      "sessionCount": 3
+    },
+    {
+      "projectPath": "/home/user/third-app",
+      "sessionCount": 0
+    }
+  ],
+  "timestamp": 1698765432123
+}
+```
+
+### Latest Session Request
+
+Batch request for the most recent session metadata across multiple projects.
+
+**TypeScript Interface:**
+
+```typescript
+interface LatestSessionRequest {
+  projectPaths: string[];
+  clientId: string;
+  timestamp: number;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "projectPaths": [
+    "/home/user/my-app",
+    "/home/user/other-app"
+  ],
+  "clientId": "mobile_batch-123",
+  "timestamp": 1698765432000
+}
+```
+
+### Latest Session Response
+
+Returns latest session metadata for each project (or null if no sessions).
+
+**TypeScript Interface:**
+
+```typescript
+interface LatestSessionResponse {
+  projects: ProjectLatestSession[];
+  timestamp: number;
+}
+
+interface ProjectLatestSession {
+  projectPath: string;
+  latestSession: SessionMetadata | null;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "projects": [
+    {
+      "projectPath": "/home/user/my-app",
+      "latestSession": {
+        "sessionId": "20241102_153045_abc123",
+        "title": "Create user profile component",
+        "lastActivity": "2024-11-02T15:32:18.000Z",
+        "messageCount": 12
+      }
+    },
+    {
+      "projectPath": "/home/user/other-app",
+      "latestSession": null
+    }
+  ],
+  "timestamp": 1698765432123
+}
+```
+
+### Session Messages Request
+
+Request messages from a specific session with optional pagination.
+
+**TypeScript Interface:**
+
+```typescript
+interface SessionMessagesRequest {
+  projectPath: string;
+  sessionId: string;
+  lastKnownUuid?: string; // For pagination
+  clientId: string;
+  timestamp: number;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "projectPath": "/home/user/my-app",
+  "sessionId": "20241102_153045_abc123",
+  "lastKnownUuid": "msg-uuid-456",
+  "clientId": "mobile_my-app-123",
+  "timestamp": 1698765432000
+}
+```
+
+<Note>
+**Pagination**: Include `lastKnownUuid` to fetch messages after a specific message. Omit to fetch from the beginning.
+</Note>
+
+### Session Messages Response
+
+Returns messages from the session file with pagination support.
+
+**TypeScript Interface:**
+
+```typescript
+interface SessionMessagesResponse {
+  messages: SessionMessage[];
+  sessionId: string;
+  projectPath: string;
+  hasMore: boolean;
+  timestamp: number;
+}
+
+interface SessionMessage {
+  uuid: string;
+  parentUuid: string | null;
+  timestamp: string;
+  type: 'user' | 'assistant' | 'summary' | 'tool';
+  role?: 'user' | 'assistant';
+  content: any;
+  toolName?: string;
+  toolInput?: any;
+  toolOutput?: string;
+  toolUseId?: string;
+  isError?: boolean;
+  metadata?: any;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "messages": [
+    {
+      "uuid": "msg-uuid-123",
+      "parentUuid": null,
+      "timestamp": "2024-11-02T15:30:45.000Z",
+      "type": "user",
+      "role": "user",
+      "content": "Create a user profile component"
+    },
+    {
+      "uuid": "msg-uuid-124",
+      "parentUuid": "msg-uuid-123",
+      "timestamp": "2024-11-02T15:30:47.000Z",
+      "type": "assistant",
+      "role": "assistant",
+      "content": "I'll help you create a user profile component..."
+    },
+    {
+      "uuid": "msg-uuid-125",
+      "parentUuid": "msg-uuid-124",
+      "timestamp": "2024-11-02T15:30:50.000Z",
+      "type": "tool",
+      "toolName": "Write",
+      "toolInput": {
+        "file_path": "/home/user/my-app/src/components/Profile.tsx",
+        "content": "import React from 'react';\n\n..."
+      },
+      "toolOutput": "File written successfully",
+      "isError": false
+    }
+  ],
+  "sessionId": "20241102_153045_abc123",
+  "projectPath": "/home/user/my-app",
+  "hasMore": true,
+  "timestamp": 1698765432123
+}
+```
+
+---
+
+## System Messages
+
+### System Config
+
+Published by backend on startup as a **retained message**. Contains terminal credentials and configuration.
+
+**TypeScript Interface:**
+
+```typescript
+interface SystemConfig {
+  type: 'system_config';
+  serverUrl?: string;
+  mqttPath?: string;
+  terminalConfig?: TerminalConfig;
+  timestamp: number;
+}
+
+interface TerminalConfig {
+  enabled: boolean;
+  path: string;
+  username: string;
+  password: string;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "type": "system_config",
+  "terminalConfig": {
+    "enabled": true,
+    "path": "/terminal",
+    "username": "kL9mN2pQ7rT4sV8xY1zA3bC5dE6fG",
+    "password": "aB1cD2eF3gH4iJ5kL6mN7oP8qR9sT0uV1wX2yZ3aB4cD5eF6gH7iJ8kL9mN0oP1qR2sT3uV4wX5yZ6aB7cD8eF9gH0iJ1kL2mN3oP4qR5sT6uV7wX8yZ9aB0cD1eF2gH3iJ4kL5mN6oP7qR8sT9uV0wX1yZ2aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV3wX4yZ5aB6cD7eF8gH9iJ0kL1mN2oP3qR4sT5uV6wX7yZ8aB9cD0eF1gH2iJ3kL4mN5oP6qR7sT8uV9wX0yZ1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uV2wX3yZ4aB5cD6eF7gH8iJ9kL0mN1oP2qR3sT4uV5wX6yZ7aB8cD9eF0gH1iJ2kL3mN4oP5qR6sT7uV8wX9yZ0aB1cD2eF3gH4iJ5kL6mN7oP8qR9sT0uV1wX2yZ3"
+  },
+  "timestamp": 1698765432000
+}
+```
+
+<Warning>
+**Security**: Terminal credentials are **auto-generated** with 32-char username and 480-char password for maximum security. Never hardcode or reuse these credentials.
+</Warning>
+
+### System Info Request
+
+Request OS information from backend (platform, homedir, suggested path).
+
+**TypeScript Interface:**
+
+```typescript
+interface SystemInfoRequest {
+  clientId: string;
+  timestamp: number;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "clientId": "mobile_setup-wizard-123",
+  "timestamp": 1698765432000
+}
+```
+
+### System Info Response
+
+Backend responds with OS details and a platform-specific suggested project path.
+
+**TypeScript Interface:**
+
+```typescript
+interface SystemInfoResponse {
+  platform: 'linux' | 'darwin' | 'win32' | string;
+  homedir: string;
+  suggestedPath: string;
+  timestamp: number;
+}
+```
+
+**JSON Examples:**
+
+<CodeGroup>
+```json Linux
+{
+  "platform": "linux",
+  "homedir": "/home/user",
+  "suggestedPath": "/home/user/projects/my-project",
+  "timestamp": 1698765432123
+}
+```
+
+```json macOS
+{
+  "platform": "darwin",
+  "homedir": "/Users/user",
+  "suggestedPath": "/Users/user/projects/my-project",
+  "timestamp": 1698765432123
+}
+```
+
+```json Windows
+{
+  "platform": "win32",
+  "homedir": "C:\\Users\\user",
+  "suggestedPath": "C:\\Users\\user\\projects\\my-project",
+  "timestamp": 1698765432123
+}
+```
+</CodeGroup>
+
+### Backend Ping
+
+Health check message sent from app to backend.
+
+**JSON Example:**
+
+```json
+{
+  "clientId": "mobile_my-app-123",
+  "timestamp": 1698765432000
+}
+```
+
+### Backend Pong
+
+Health check response from backend confirming it's alive.
+
+**JSON Example:**
+
+```json
+{
+  "timestamp": 1698765432123,
+  "clientId": "mobile_my-app-123"
+}
+```
+
+---
+
+## Terminal Messages
+
+### Terminal Path Update
+
+Update the terminal server's working directory when user switches projects.
+
+**TypeScript Interface:**
+
+```typescript
+interface TerminalPathUpdateRequest {
+  projectPath: string;
+  timestamp: number;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "projectPath": "/home/user/my-app",
+  "timestamp": 1698765432000
+}
+```
+
+The backend validates the path exists before updating the terminal server.
+
+---
+
+## Version Messages
+
+### Version Check Request
+
+Request version compatibility check from backend.
+
+**TypeScript Interface:**
+
+```typescript
+interface VersionCheckRequest {
+  appVersion: string;
+  platform: 'android' | 'ios';
+  clientId: string;
+  timestamp: number;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "appVersion": "1.2.3",
+  "platform": "android",
+  "clientId": "mobile_version-check-123",
+  "timestamp": 1698765432000
+}
+```
+
+### Version Check Response
+
+Backend responds with version info and update availability.
+
+**TypeScript Interface:**
+
+```typescript
+interface VersionCheckResponse {
+  backendVersion: string;
+  latestBackendVersion: string;
+  backendUpdateAvailable: boolean;
+  backendChannel: 'latest' | 'beta';
+  minAppVersion: string;
+  currentAppVersion: string;
+  updateRequired: boolean;
+  updateAvailable: boolean;
+  timestamp: number;
+}
+```
+
+**JSON Example:**
+
+```json
+{
+  "backendVersion": "1.5.3-beta.2",
+  "latestBackendVersion": "1.5.4-beta.1",
+  "backendUpdateAvailable": true,
+  "backendChannel": "beta",
+  "minAppVersion": "1.0.0",
+  "currentAppVersion": "1.2.3",
+  "updateRequired": false,
+  "updateAvailable": false,
+  "timestamp": 1698765432123
+}
+```
+
+<Info>
+- **backendChannel**: Automatically detected from version (beta versions → `beta`, others → `latest`)
+- **backendUpdateAvailable**: Compares current version with npm registry
+- **updateRequired**: True if app version < minAppVersion
+- **updateAvailable**: Reserved for mobile app store checks (always false from backend)
+</Info>
+
+---
+
+## Code References
+
+### Type Definitions
+
+**Backend:**
+- `/home/naarang/projects/cc/backend/src/types/index.ts`
+
+**Mobile App:**
+- `/home/naarang/projects/cc/claude-chat-app/lib/mqtt.ts` (lines 1-171)
+
+### Implementation
+
+**Backend Message Handling:**
+- `/home/naarang/projects/cc/backend/src/index.ts` (handlers starting line 569)
+
+**Mobile App MQTT Client:**
+- `/home/naarang/projects/cc/claude-chat-app/lib/mqtt.ts` (class starting line 172)
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="MQTT Topics" icon="sitemap" href="/reference/mqtt-topics">
+    See all MQTT topics and their routing patterns
+  </Card>
+  <Card title="Permission System" icon="shield" href="/features/permission-system">
+    Learn how permission requests work
+  </Card>
+  <Card title="Session Management" icon="clock-rotate-left" href="/features/session-management">
+    Understand session persistence and resumption
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/reference/troubleshooting">
+    Debug common message parsing and connection issues
+  </Card>
+</CardGroup>

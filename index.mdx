@@ -1,97 +1,180 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Welcome to CCC Documentation"
+description: "Control Claude Code from your mobile device with real-time chat, session management, and secure terminal access"
 ---
 
-## Setting up
+<Note>
+This is the same content as the Introduction page. You're viewing the homepage of CCC documentation.
+</Note>
 
-Get your documentation site up and running in minutes.
+## What is CCC?
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+CCC (Claude Code Chat) is a mobile bridge that enables you to control [Claude Code](https://claude.com/claude-code) from your Android or iOS device. Chat with Claude, manage coding sessions, approve tool permissions, and access your development terminal—all from your phone or tablet.
 
-## Make it yours
+<Info>
+**Prerequisites:** You need an active Claude Pro or Max subscription and Claude Code installed on your development machine.
+</Info>
 
-Design a docs site that looks great and empowers your users.
+## Quick Start
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+Get up and running in under 10 minutes:
+
+<CardGroup cols={3}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install backend and mobile app
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Your first chat in 10 minutes
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Core Concepts" icon="book" href="/core-concepts">
+    Understand how CCC works
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+---
 
-Everything you need to create world-class documentation.
+## Key Features
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={2}>
+  <Card title="Permission System" icon="shield-check" href="/features/permission-system">
+    Control what tools Claude can use with 4 permission modes
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Session Management" icon="clock-rotate-left" href="/features/session-management">
+    Resume conversations across devices and persist chat history
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Terminal Access" icon="terminal" href="/features/terminal-access">
+    Full bash/powershell terminal access from your mobile device
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="Image Attachments" icon="image" href="/features/image-attachments">
+    Send screenshots and images to Claude (up to 30MB total)
   </Card>
-</Columns>
+  <Card title="Real-time Streaming" icon="bolt" href="/features/chat-streaming">
+    Watch Claude's responses stream in real-time via MQTT
+  </Card>
+  <Card title="Multi-Project" icon="folder-tree" href="/features/multi-project">
+    Manage multiple codebases with separate sessions
+  </Card>
+</CardGroup>
 
-## Need inspiration?
+---
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+## Explore Documentation
+
+<Tabs>
+  <Tab title="Getting Started">
+    New to CCC? Start here:
+
+    <Steps>
+      <Step title="Read Introduction">
+        Understand what CCC is and how it works
+
+        [View Introduction →](/introduction)
+      </Step>
+
+      <Step title="Install CCC">
+        Install backend server and mobile app
+
+        [Installation Guide →](/installation)
+      </Step>
+
+      <Step title="Complete Quickstart">
+        Get your first chat running in 10 minutes
+
+        [Quickstart Guide →](/quickstart)
+      </Step>
+
+      <Step title="Learn Core Concepts">
+        Understand sessions, projects, and permissions
+
+        [Core Concepts →](/core-concepts)
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Features">
+    Explore all CCC features:
+
+    - [Permission System](/features/permission-system) - 4 modes for granular control
+    - [Chat & Streaming](/features/chat-streaming) - Real-time responses with tool cards
+    - [Image Attachments](/features/image-attachments) - Send visuals to Claude
+    - [Session Management](/features/session-management) - Persistent conversations
+    - [Terminal Access](/features/terminal-access) - Web-based terminal from mobile
+    - [Multi-Project](/features/multi-project) - Organize multiple codebases
+    - [Server Profiles](/features/server-profiles) - Connect to multiple backends
+  </Tab>
+
+  <Tab title="Mobile App">
+    Mobile app guides:
+
+    - [App Overview](/mobile/overview) - Features and navigation
+    - [Installation](/mobile/installation) - Download for iOS/Android
+    - [Navigation](/mobile/navigation) - Screens and gestures
+    - [Chat Features](/mobile/chat-features) - Messages, images, tool cards
+    - [Settings](/mobile/settings) - Profiles, permissions, preferences
+  </Tab>
+
+  <Tab title="Reference">
+    Technical reference:
+
+    - [CLI Commands](/reference/cli-commands) - All backend flags and options
+    - [Configuration](/reference/configuration) - Config file structures
+    - [Environment Variables](/reference/environment-variables) - All env vars
+    - [MQTT Topics](/reference/mqtt-topics) - Complete topic reference
+    - [Message Formats](/reference/message-formats) - TypeScript interfaces
+    - [Troubleshooting](/reference/troubleshooting) - Common issues and solutions
+  </Tab>
+
+  <Tab title="Advanced">
+    Advanced topics:
+
+    - [Remote Access](/advanced/remote-access) - ngrok setup for anywhere access
+    - [MQTT Configuration](/advanced/mqtt-configuration) - Advanced broker tuning
+    - [Security](/advanced/security) - Production security best practices
+    - [Custom Hooks](/advanced/custom-hooks) - Create custom permission hooks
+    - [Performance](/advanced/performance) - Optimize for speed and resources
+  </Tab>
+</Tabs>
+
+---
+
+## Use Cases
+
+<AccordionGroup>
+  <Accordion title="On-the-Go Coding" icon="mobile">
+    Ask Claude to implement features, fix bugs, or review code while you're away from your desk. Continue sessions started on desktop from your mobile device.
+  </Accordion>
+
+  <Accordion title="Code Review from Mobile" icon="code-compare">
+    Review Claude's proposed changes on your phone before they're applied to your project. Approve or deny file modifications with full context.
+  </Accordion>
+
+  <Accordion title="Remote Terminal Access" icon="terminal">
+    Execute commands, check logs, or restart services from your terminal—no SSH or VPN required. Full bash/PowerShell access from your pocket.
+  </Accordion>
+
+  <Accordion title="Visual Debugging" icon="image">
+    Send screenshots of UI bugs or design mockups to Claude for analysis and suggestions. Claude can see what you see.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Community & Support
+
+<CardGroup cols={3}>
+  <Card title="Discord" icon="discord" href="https://discord.gg/9EjE8t4YCF">
+    Join our community, get help, and share feedback
+  </Card>
+  <Card title="App Store" icon="apple" href="https://apps.apple.com/app/id6753870766">
+    Download CCC for iOS (iPhone/iPad)
+  </Card>
+  <Card title="Google Play" icon="google-play" href="https://play.google.com/store/apps/details?id=com.naarang.ccc">
+    Download CCC for Android
+  </Card>
+</CardGroup>
+
+---
+
+<Warning>
+CCC is designed for personal development use. It executes commands and file operations on your machine based on Claude's responses. Always review permissions carefully, especially in production environments.
+</Warning>

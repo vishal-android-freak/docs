@@ -1,0 +1,429 @@
+---
+title: "Mobile App Installation"
+description: "Download and install CCC for iOS or Android from App Store or Google Play"
+---
+
+## System Requirements
+
+Before installing, verify your device meets these requirements:
+
+<Tabs>
+  <Tab title="iOS">
+    - **OS Version:** iOS 13.0 or later
+    - **Devices:** iPhone, iPad, iPod touch
+    - **Storage:** 100MB free space
+    - **RAM:** 2GB minimum
+    - **Network:** WiFi or cellular data
+  </Tab>
+  <Tab title="Android">
+    - **OS Version:** Android 6.0 (API 23) or later
+    - **Devices:** Phones and tablets
+    - **Storage:** 100MB free space
+    - **RAM:** 2GB minimum
+    - **Network:** WiFi or cellular data
+    - **Architecture:** ARM64, ARM32, x86_64 supported
+  </Tab>
+</Tabs>
+
+<Info>
+The app works best on devices with at least 3GB RAM. Lower-spec devices may experience slower performance with large chat histories.
+</Info>
+
+## Installation Methods
+
+<CardGroup cols={3}>
+  <Card title="App Store" icon="apple" href="#app-store-ios">
+    Recommended for iOS devices
+  </Card>
+  <Card title="Google Play" icon="google-play" href="#google-play-android">
+    Recommended for Android devices
+  </Card>
+  <Card title="APK (Advanced)" icon="file-zipper" href="#apk-installation">
+    Direct APK for Android power users
+  </Card>
+</CardGroup>
+
+## App Store (iOS)
+
+### Step 1: Open App Store
+
+On your iPhone or iPad, tap the **App Store** icon.
+
+### Step 2: Search for CCC
+
+1. Tap the **Search** tab at the bottom
+2. Type **"CCC"** or **"Claude Code Chat"**
+3. Look for the app with the CCC icon
+
+![App Store listing](images/mobile-appstore-listing.png)
+
+### Step 3: Install
+
+1. Tap **Get** (or the cloud download icon if you installed before)
+2. Authenticate with Face ID, Touch ID, or your Apple ID password
+3. Wait for download to complete (usually 30-60 seconds)
+
+### Step 4: Open
+
+Tap **Open** or find the CCC icon on your home screen.
+
+<Tip>
+**iOS 14+ Tip:** Long-press the app icon after installation to add quick actions to your home screen (New Chat, Resume Session).
+</Tip>
+
+## Google Play (Android)
+
+### Step 1: Open Google Play Store
+
+On your Android device, tap the **Play Store** icon.
+
+### Step 2: Search for CCC
+
+1. Tap the **search bar** at the top
+2. Type **"CCC"** or **"Claude Code Chat"**
+3. Look for the app published by **naarang**
+
+![Google Play listing](images/mobile-playstore-listing.png)
+
+### Step 3: Install
+
+1. Tap **Install**
+2. Review permissions (Internet, optional Camera/Photos)
+3. Tap **Accept** to begin installation
+4. Wait for download and installation (usually 1-2 minutes)
+
+### Step 4: Open
+
+Tap **Open** or find the CCC icon in your app drawer.
+
+<Tip>
+**Android 12+ Tip:** You can pin the app to your home screen by long-pressing the icon in the app drawer and dragging it to the home screen.
+</Tip>
+
+## APK Installation (Advanced)
+
+For users who cannot access Google Play, you can install the APK directly.
+
+<Warning>
+**Security Notice:** Only download APKs from official sources. Installing from untrusted sources can compromise your device security.
+</Warning>
+
+### Step 1: Enable Unknown Sources
+
+1. Open **Settings** on your Android device
+2. Navigate to **Security** or **Privacy**
+3. Enable **Install unknown apps** for your browser or file manager
+4. Confirm the security warning
+
+### Step 2: Download APK
+
+Download the latest APK from the official CCC website or Discord community.
+
+Look for **ccc-vX.X.X.apk** (e.g., `ccc-v1.1.1.apk`)
+
+### Step 3: Install APK
+
+1. Open your **Downloads** folder or **Files** app
+2. Tap the **ccc-vX.X.X.apk** file
+3. Tap **Install**
+4. Wait for installation to complete
+5. Tap **Open**
+
+### Step 4: Disable Unknown Sources (Recommended)
+
+After installation, return to **Settings > Security** and disable **Install unknown apps** for security.
+
+<Note>
+APK installations do not auto-update. You must manually download and install new versions from GitHub releases.
+</Note>
+
+## First Launch Setup
+
+After installing and opening the app for the first time, you'll go through initial setup:
+
+### 1. Onboarding Screens
+
+Swipe through 3 introductory slides explaining CCC features:
+
+<Steps>
+  <Step title="Welcome">
+    Introduction to CCC and its purpose
+  </Step>
+  <Step title="Features">
+    Overview of chat, sessions, and terminal access
+  </Step>
+  <Step title="Security">
+    Explanation of how your data stays private
+  </Step>
+</Steps>
+
+Tap **Next** through slides or **Skip** to jump to setup.
+
+### 2. Create Server Profile
+
+You'll be prompted to add your first server connection:
+
+![Server profile setup](images/mobile-server-setup.png)
+
+<Tabs>
+  <Tab title="Local Server">
+    **For development on the same network:**
+
+    1. **Profile Name:** `Local Dev`
+    2. **Server URL:** Your computer's local IP (e.g., `192.168.1.100:3000`)
+    3. **MQTT Username:** Leave blank (unless you set one)
+    4. **MQTT Password:** Leave blank (unless you set one)
+    5. **Use SSL:** OFF
+    6. Tap **Create**
+
+    <Tip>
+    Find your local IP with `ipconfig` (Windows) or `ifconfig` (Mac/Linux). It usually starts with `192.168.` or `10.0.`.
+    </Tip>
+  </Tab>
+  <Tab title="Remote Server">
+    **For remote access via ngrok:**
+
+    1. **Profile Name:** `Remote Server`
+    2. **Server URL:** Your ngrok URL (e.g., `abc123.ngrok.io`)
+    3. **MQTT Username:** Your MQTT username (if auth enabled)
+    4. **MQTT Password:** Your MQTT password (if auth enabled)
+    5. **Use SSL:** ON (ngrok uses https)
+    6. Tap **Create**
+
+    <Note>
+    The server URL should NOT include `http://` or `https://`—just the domain and port.
+    </Note>
+  </Tab>
+</Tabs>
+
+### 3. Grant Permissions (Optional)
+
+When you first try to attach an image, the app will request:
+
+<AccordionGroup>
+  <Accordion title="Camera (iOS)" icon="camera">
+    **Purpose:** Take photos to send to Claude
+
+    **Permission prompt:** "CCC needs access to your camera to let you take photos and attach them to your messages for Claude to analyze."
+
+    **Tap:** Allow
+  </Accordion>
+
+  <Accordion title="Photo Library (iOS)" icon="image">
+    **Purpose:** Choose existing photos to send to Claude
+
+    **Permission prompt:** "CCC needs access to your photo library to let you attach images to your messages for Claude to analyze."
+
+    **Tap:** Allow or Select Photos
+  </Accordion>
+
+  <Accordion title="Camera (Android)" icon="camera">
+    **Purpose:** Take photos to send to Claude
+
+    **Permission prompt:** Camera access permission
+
+    **Tap:** Allow or Allow only while using the app
+  </Accordion>
+
+  <Accordion title="Photos and Media (Android)" icon="image">
+    **Purpose:** Choose existing images to send to Claude
+
+    **Permission prompt:** Photos and media access permission
+
+    **Tap:** Allow
+  </Accordion>
+</AccordionGroup>
+
+<Info>
+You can always change permissions later in your device settings: **Settings > Apps > CCC > Permissions**
+</Info>
+
+## Verify Installation
+
+After setup, verify everything works:
+
+<Steps>
+  <Step title="Check connection">
+    Go to Projects tab. You should see "Connected" or be able to pull to refresh.
+  </Step>
+  <Step title="Create a project">
+    Tap the **+** button and create a test project pointing to any directory on your server.
+  </Step>
+  <Step title="Send a message">
+    Open the project and send a test message like "Hello, Claude!"
+  </Step>
+  <Step title="Wait for response">
+    You should see Claude's response streaming in within a few seconds.
+  </Step>
+</Steps>
+
+If you see a green connection dot and receive responses, installation is successful!
+
+## App Size & Data Usage
+
+### App Size
+
+- **iOS:** ~45MB download, ~120MB installed
+- **Android:** ~50MB download, ~130MB installed
+
+### Data Usage
+
+Typical usage patterns:
+
+| Activity | Data Used |
+|----------|-----------|
+| Text chat (100 messages) | ~500KB |
+| Image upload (1 photo) | 1-5MB |
+| Session sync (50 messages) | ~300KB |
+| Terminal session (10 min) | ~200KB |
+| **Average per day** | **5-15MB** |
+
+<Tip>
+Use WiFi for image uploads to conserve cellular data. A single high-res photo can use 5-10MB before compression.
+</Tip>
+
+## Updating the App
+
+### Auto-Updates (Recommended)
+
+Enable automatic updates for the easiest experience:
+
+<Tabs>
+  <Tab title="iOS">
+    1. Open **Settings** on your iPhone/iPad
+    2. Tap **App Store**
+    3. Enable **App Updates** under Automatic Downloads
+
+    CCC will update automatically overnight when connected to WiFi.
+  </Tab>
+  <Tab title="Android">
+    1. Open **Google Play Store**
+    2. Tap your profile icon (top right)
+    3. Tap **Settings**
+    4. Tap **Network preferences**
+    5. Enable **Auto-update apps** (choose "Over Wi-Fi only" to save data)
+
+    CCC will update automatically when new versions are released.
+  </Tab>
+</Tabs>
+
+### Manual Updates
+
+Check for updates manually:
+
+<Tabs>
+  <Tab title="iOS">
+    1. Open **App Store**
+    2. Tap your profile icon (top right)
+    3. Scroll down to **Available Updates**
+    4. Find CCC and tap **Update**
+  </Tab>
+  <Tab title="Android">
+    1. Open **Google Play Store**
+    2. Search for **CCC**
+    3. If an update is available, tap **Update**
+  </Tab>
+</Tabs>
+
+### Update Notifications
+
+The app checks for updates when you open the Projects screen:
+
+- **OTA Updates:** Downloaded and applied automatically in background
+- **Major Updates:** Shows a prompt to visit the store
+- **Critical Updates:** May require update before using app
+
+<Warning>
+If you installed via APK, you must manually download new APKs from GitHub. The app cannot auto-update from store.
+</Warning>
+
+## Uninstalling
+
+To remove CCC from your device:
+
+<Tabs>
+  <Tab title="iOS">
+    1. Long-press the CCC app icon on your home screen
+    2. Tap **Remove App**
+    3. Tap **Delete App**
+    4. Confirm deletion
+
+    This removes the app and all local data (projects, messages, settings).
+  </Tab>
+  <Tab title="Android">
+    1. Open **Settings**
+    2. Tap **Apps** or **Applications**
+    3. Find and tap **CCC**
+    4. Tap **Uninstall**
+    5. Confirm uninstallation
+
+    This removes the app and all local data (projects, messages, settings).
+  </Tab>
+</Tabs>
+
+<Note>
+Uninstalling the mobile app does NOT affect your backend server or Claude Code sessions. Your chat history remains in session files on your server.
+</Note>
+
+## Troubleshooting Installation
+
+<AccordionGroup>
+  <Accordion title="App won't download" icon="download">
+    **iOS:**
+    - Check Apple ID is valid and signed in
+    - Ensure sufficient iCloud storage
+    - Try restarting your device
+    - Sign out and back into App Store
+
+    **Android:**
+    - Check Google account is signed in
+    - Clear Play Store cache (Settings > Apps > Play Store > Clear Cache)
+    - Ensure sufficient storage space
+    - Try restarting your device
+  </Accordion>
+
+  <Accordion title="App crashes on launch" icon="circle-exclamation">
+    1. Force quit the app
+    2. Restart your device
+    3. Reinstall the app
+    4. Check device OS is up to date
+    5. If still crashing, report issue on GitHub with device model and OS version
+  </Accordion>
+
+  <Accordion title="Can't install from APK" icon="file-zipper">
+    1. Verify APK is from official GitHub releases
+    2. Ensure "Install unknown apps" is enabled for your file manager
+    3. Check storage space (need 100MB free)
+    4. Try downloading APK again (may be corrupted)
+    5. Verify Android version is 6.0+
+  </Accordion>
+
+  <Accordion title="Server connection fails immediately" icon="wifi">
+    1. Check backend is running (`ccc --status` on server)
+    2. Verify server URL is correct (no http:// or https:// prefix)
+    3. Ensure SSL toggle matches server (http = OFF, https = ON)
+    4. Test server from browser: `http://SERVER_URL/health`
+    5. Check firewall allows MQTT port (1883) and HTTP port
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="App Overview" icon="mobile" href="/mobile/overview">
+    Learn about the mobile app's features and capabilities
+  </Card>
+  <Card title="Navigation Guide" icon="compass" href="/mobile/navigation">
+    Understand how to navigate between screens and tabs
+  </Card>
+  <Card title="Chat Features" icon="messages" href="/mobile/chat-features">
+    Master the chat interface and message features
+  </Card>
+  <Card title="Settings & Config" icon="gear" href="/mobile/settings">
+    Configure server profiles and preferences
+  </Card>
+</CardGroup>
+
+<Info>
+Need help? Join the community on [Discord](https://discord.gg/9EjE8t4YCF) for support and assistance.
+</Info>

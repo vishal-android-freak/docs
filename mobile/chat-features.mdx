@@ -1,0 +1,687 @@
+---
+title: "Chat Features"
+description: "Send messages, attach images, view tool cards, monitor context, and track todos"
+---
+
+## Chat Interface Overview
+
+The chat screen is the heart of CCC, where you interact with Claude Code in real-time.
+
+![Chat interface overview](images/mobile-chat-overview.png)
+
+<Info>
+The chat uses **streaming responses**—you see Claude's reply as it's generated, word by word, just like ChatGPT or Claude on the web.
+</Info>
+
+## Message Types
+
+### User Messages
+
+Your messages appear on the right side with:
+
+- **Gray background** - Distinct from Claude's messages
+- **Right alignment** - Visually separates your input
+- **Timestamp** - Tap message to view send time
+- **Attachments** - Image thumbnails if you sent photos
+
+![User message](images/mobile-user-message.png)
+
+### User Messages with Images
+
+When you attach images, they appear as thumbnails in your message:
+
+```plaintext
+[Image 1] [Image 2]
+Your message text here
+```
+
+Tap an image thumbnail to view full-size.
+
+### Assistant Messages
+
+Claude's text responses appear on the left with:
+
+- **White background** - Clean, readable
+- **Left alignment** - Clear distinction from your messages
+- **Markdown rendering** - Bold, italics, lists, code blocks, tables
+- **Streaming animation** - Cursor blinks while typing
+
+![Assistant message](images/mobile-assistant-message.png)
+
+<Tip>
+**Long-press any message** to copy its text to your clipboard.
+</Tip>
+
+### Tool Use Cards
+
+When Claude uses tools (Read, Edit, Bash, etc.), they appear as expandable cards:
+
+![Tool use card](images/mobile-tool-card.png)
+
+<Tabs>
+  <Tab title="Collapsed (Default)">
+    Shows:
+    - **Tool icon** - Visual indicator
+    - **Tool name** - Read, Edit, Bash, etc.
+    - **Status** - "Running" or completed checkmark
+    - **Expand arrow** - Chevron down icon
+  </Tab>
+  <Tab title="Expanded">
+    Shows:
+    - **Tool input** - Parameters Claude sent
+    - **Tool output** - Result or error message
+    - **Syntax highlighting** - For code in input/output
+    - **Collapse arrow** - Chevron up icon
+  </Tab>
+</Tabs>
+
+<Steps>
+  <Step title="Tap to expand">
+    Click anywhere on the card to reveal input and output
+  </Step>
+  <Step title="Review details">
+    See exactly what Claude did and what it received
+  </Step>
+  <Step title="Tap to collapse">
+    Click again to minimize for a cleaner view
+  </Step>
+</Steps>
+
+#### Common Tools
+
+<AccordionGroup>
+  <Accordion title="Read" icon="file">
+    **Purpose:** Read file contents
+
+    **Input:** File path(s)
+
+    **Output:** File contents with line numbers
+  </Accordion>
+
+  <Accordion title="Edit" icon="pen">
+    **Purpose:** Modify existing files
+
+    **Input:** File path, old string, new string
+
+    **Output:** Success message or error
+  </Accordion>
+
+  <Accordion title="Write" icon="file-pen">
+    **Purpose:** Create or overwrite files
+
+    **Input:** File path, content
+
+    **Output:** Success message or error
+  </Accordion>
+
+  <Accordion title="Bash" icon="terminal">
+    **Purpose:** Execute shell commands
+
+    **Input:** Command string
+
+    **Output:** Command stdout/stderr
+  </Accordion>
+
+  <Accordion title="Glob" icon="search">
+    **Purpose:** Search for files by pattern
+
+    **Input:** Glob pattern (e.g., `**/*.js`)
+
+    **Output:** List of matching file paths
+  </Accordion>
+
+  <Accordion title="Grep" icon="magnifying-glass">
+    **Purpose:** Search file contents
+
+    **Input:** Pattern, path, options
+
+    **Output:** Matching lines with context
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+**Tool errors** appear in red within the card. If Claude receives an error, it will see the error message and adjust its approach.
+</Warning>
+
+### Thinking Blocks
+
+Claude's extended thinking appears in collapsible blocks:
+
+![Thinking block](images/mobile-thinking.png)
+
+<Tabs>
+  <Tab title="What is Thinking?">
+    Claude's internal reasoning before responding. It thinks through:
+    - Problem analysis
+    - Approach planning
+    - Edge cases
+    - Implementation strategy
+  </Tab>
+  <Tab title="When to Read">
+    **Always read thinking when:**
+    - Claude makes unexpected decisions
+    - You want to understand the approach
+    - Debugging why something didn't work
+    - Learning how Claude solves problems
+  </Tab>
+  <Tab title="When to Skip">
+    **Can skip thinking when:**
+    - Simple, straightforward tasks
+    - You trust Claude's output
+    - You're in a hurry
+    - The result speaks for itself
+  </Tab>
+</Tabs>
+
+<Note>
+Thinking blocks are automatically collapsed by default. Tap to expand and view Claude's reasoning.
+</Note>
+
+## Sending Messages
+
+### Text Messages
+
+<Steps>
+  <Step title="Tap input field">
+    Keyboard appears, input field expands
+  </Step>
+  <Step title="Type your message">
+    Up to 4,000 characters (about 2-3 pages of text)
+  </Step>
+  <Step title="Tap send button">
+    Orange send icon (paper airplane)
+  </Step>
+  <Step title="Wait for response">
+    Thinking indicator appears, then Claude responds
+  </Step>
+</Steps>
+
+The input field is **multi-line**—press Enter/Return to add line breaks without sending.
+
+<Tip>
+**Character counter:** The input field changes color when you approach the 4,000 character limit.
+</Tip>
+
+### Image Attachments
+
+Send screenshots, photos, or diagrams for Claude to analyze.
+
+<Steps>
+  <Step title="Tap image button">
+    Plus icon on the left of input field
+  </Step>
+  <Step title="Choose source">
+    - **Choose from library:** Select existing photos (multi-select)
+    - **Take photo:** Capture new image with camera
+  </Step>
+  <Step title="Review selection">
+    Thumbnails appear above input field. Tap **X** to remove any image.
+  </Step>
+  <Step title="Add message text">
+    Type what you want Claude to do with the images (optional but recommended)
+  </Step>
+  <Step title="Send">
+    Tap send button. Images are compressed and uploaded.
+  </Step>
+</Steps>
+
+![Image attachment workflow](images/mobile-attach-images.png)
+
+#### Image Requirements
+
+<CardGroup cols={2}>
+  <Card title="Supported Formats" icon="image">
+    JPEG, PNG, WebP, GIF (non-animated)
+  </Card>
+  <Card title="Max Size" icon="weight-scale">
+    30MB total per message (all images combined)
+  </Card>
+  <Card title="Auto-Compression" icon="compress">
+    Large images compressed to 2048x2048px, 80% quality
+  </Card>
+  <Card title="Multi-Image" icon="images">
+    Attach multiple images in one message
+  </Card>
+</CardGroup>
+
+<Warning>
+**Permission required:** On first use, grant camera and photo library access. You can change this later in device Settings > Apps > CCC > Permissions.
+</Warning>
+
+#### Image Use Cases
+
+<Tabs>
+  <Tab title="Error Screenshots">
+    **Use case:** Show Claude error messages or stack traces
+
+    **Example:** "This error appeared. How do I fix it?"
+
+    ![Error example](images/mobile-image-error.png)
+  </Tab>
+  <Tab title="UI Design">
+    **Use case:** Get Claude's feedback on design mockups
+
+    **Example:** "Review this UI design and suggest improvements"
+
+    ![Design example](images/mobile-image-design.png)
+  </Tab>
+  <Tab title="Diagrams">
+    **Use case:** Share architecture diagrams for analysis
+
+    **Example:** "Convert this diagram into code structure"
+
+    ![Diagram example](images/mobile-image-diagram.png)
+  </Tab>
+  <Tab title="Code Photos">
+    **Use case:** Photograph code from books or whiteboards
+
+    **Example:** "Implement this algorithm from the book"
+
+    ![Code example](images/mobile-image-code.png)
+  </Tab>
+</Tabs>
+
+<Tip>
+**Best practice:** Always include descriptive text with your images. Don't just send images without context—tell Claude what you want it to do.
+</Tip>
+
+## Real-Time Features
+
+### Streaming Responses
+
+Claude's responses stream in real-time as they're generated:
+
+<Steps>
+  <Step title="Thinking indicator">
+    Animated dots show Claude is processing
+  </Step>
+  <Step title="First chunk">
+    Message appears and begins streaming text
+  </Step>
+  <Step title="Live updates">
+    Words appear one by one (cursor blinks)
+  </Step>
+  <Step title="Tool execution">
+    Tool cards appear as Claude uses them
+  </Step>
+  <Step title="Completion">
+    Final message rendered, thinking indicator disappears
+  </Step>
+</Steps>
+
+<Note>
+**Network speed affects streaming:** On slow connections, you may see text in larger chunks rather than word-by-word.
+</Note>
+
+### Thinking Indicator
+
+While Claude is processing, you'll see an animated indicator:
+
+```
+● ● ● Thinking...
+```
+
+This appears:
+- When you first send a message
+- Between tool uses
+- During extended thinking
+- While generating responses
+
+### Stopping Messages
+
+If Claude is taking too long or going in the wrong direction:
+
+<Steps>
+  <Step title="Tap stop button">
+    Red square icon replaces the send button during processing
+  </Step>
+  <Step title="Confirm cancellation">
+    Processing stops immediately
+  </Step>
+  <Step title="Clean up">
+    Partial responses and streaming messages are discarded
+  </Step>
+</Steps>
+
+<Warning>
+Stopping a message cancels the entire operation, including any tool executions in progress. This cannot be undone.
+</Warning>
+
+## Todo Tracker
+
+When Claude uses the **TodoWrite** tool, a todo tracker appears at the top of the chat:
+
+![Todo tracker](images/mobile-todo-tracker.png)
+
+### Todo States
+
+<Tabs>
+  <Tab title="Pending">
+    **Icon:** Gray circle
+    **Meaning:** Task not started yet
+    **Example:** "Writing tests"
+  </Tab>
+  <Tab title="In Progress">
+    **Icon:** Orange circle with animation
+    **Meaning:** Task currently being worked on
+    **Example:** "Building the project..."
+  </Tab>
+  <Tab title="Completed">
+    **Icon:** Green checkmark
+    **Meaning:** Task finished successfully
+    **Example:** "Tests passed ✓"
+  </Tab>
+</Tabs>
+
+### Progress Bar
+
+Visual progress indicator shows:
+- **Orange segment:** Completed tasks
+- **Gray segment:** Remaining tasks
+- **Percentage:** Completion percentage
+
+<Tip>
+**Expand to see details:** Tap the todo tracker to expand and see the full task list. Tap again to minimize.
+</Tip>
+
+### Auto-Collapse
+
+The todo tracker automatically:
+- **Expands** when tasks are first added
+- **Updates** in real-time as Claude works
+- **Collapses** after all tasks complete
+- **Disappears** when the conversation ends
+
+<Note>
+Todos are session-specific. Starting a new chat clears the todo list.
+</Note>
+
+## Context Monitoring
+
+Monitor your token usage with the context indicator in the bottom-right toolbar.
+
+### Context Pie Chart
+
+The circular indicator shows:
+- **Orange fill:** Used tokens (fills from bottom)
+- **Empty space:** Remaining tokens
+- **Percentage:** Usage percentage
+
+![Context usage indicator](images/mobile-context-usage.png)
+
+### Context Tooltip
+
+Tap the context indicator to see detailed breakdown:
+
+```
+Context Window (45%)
+90,000 / 200,000 tokens
+
+Input: 70,000
+Output: 15,000
+Cache Creation: 3,000
+Cache Read: 2,000
+```
+
+<AccordionGroup>
+  <Accordion title="Input Tokens" icon="arrow-right">
+    Tokens sent to Claude (your messages, file contents, images)
+  </Accordion>
+
+  <Accordion title="Output Tokens" icon="arrow-left">
+    Tokens generated by Claude (responses, tool inputs)
+  </Accordion>
+
+  <Accordion title="Cache Creation" icon="database">
+    Tokens used to create prompt cache (first time reading large files)
+  </Accordion>
+
+  <Accordion title="Cache Read" icon="bolt">
+    Tokens read from cache (subsequent reads of same files—much cheaper!)
+  </Accordion>
+</AccordionGroup>
+
+### When to Clear
+
+Consider clearing the chat when:
+
+<Steps>
+  <Step title="Above 80%">
+    **Warning level** - Running out of context space
+  </Step>
+  <Step title="Above 90%">
+    **Critical level** - May hit limit mid-response
+  </Step>
+  <Step title="Changing topics">
+    Switch to a new task or project area
+  </Step>
+  <Step title="Claude confused">
+    Too much context can cause confusion
+  </Step>
+</Steps>
+
+<Tip>
+**Prompt caching saves money:** Files read multiple times are cached. The first read costs more tokens (Cache Creation), but subsequent reads are nearly free (Cache Read).
+</Tip>
+
+## Permission System
+
+Control what Claude can do with four permission modes:
+
+### Default Mode
+
+**Icon:** Shield
+**Behavior:** Prompts on first use of each tool
+
+<Steps>
+  <Step title="First use">
+    Permission modal appears for each new tool
+  </Step>
+  <Step title="Approve">
+    Tool executes, subsequent uses auto-approved
+  </Step>
+  <Step title="Deny">
+    Tool blocked, Claude sees error and adapts
+  </Step>
+</Steps>
+
+### Accept Edits Mode
+
+**Icon:** Check
+**Behavior:** Auto-approves file edit operations
+
+All Edit, Write, NotebookEdit, and MultiEdit tools are auto-approved. Other tools (Read, Bash, etc.) still require approval.
+
+<Info>
+**Use when:** You trust Claude to modify files but want control over command execution and other operations.
+</Info>
+
+### Plan Mode
+
+**Icon:** Eye
+**Behavior:** Analysis only, no changes
+
+Claude can:
+- ✅ Read files
+- ✅ Search code
+- ✅ Analyze structure
+- ❌ Edit files
+- ❌ Execute commands
+- ❌ Make changes
+
+**Exit plan mode:** When ready to implement, Claude will request permission to switch modes.
+
+### Bypass All Mode
+
+**Icon:** Shield with slash (red)
+**Behavior:** Skips ALL permission prompts
+
+<Warning>
+**Dangerous!** Claude can execute any tool without asking. Only use in safe, controlled environments like isolated dev containers.
+</Warning>
+
+### Changing Modes
+
+Tap the permission mode button in the toolbar to switch:
+
+![Permission mode selector](images/mobile-permission-modes.png)
+
+<Tabs>
+  <Tab title="Default">
+    **When to use:** Starting a new task, learning Claude's behavior
+  </Tab>
+  <Tab title="Accept Edits">
+    **When to use:** Trusted file modifications, refactoring, adding features
+  </Tab>
+  <Tab title="Plan">
+    **When to use:** Code review, exploration, understanding unfamiliar code
+  </Tab>
+  <Tab title="Bypass All">
+    **When to use:** Repetitive tasks, safe environments, when you're watching closely
+  </Tab>
+</Tabs>
+
+<Note>
+Mode changes apply to all subsequent messages in the current session. They persist until you change the mode again or clear the chat.
+</Note>
+
+## Message Actions
+
+### Copy Message Text
+
+Long-press any message to copy its content to your clipboard:
+
+<Steps>
+  <Step title="Long-press">
+    Press and hold on any user or assistant message
+  </Step>
+  <Step title="Copy">
+    Text is copied automatically
+  </Step>
+  <Step title="Paste">
+    Use system paste anywhere (notes, Slack, email, etc.)
+  </Step>
+</Steps>
+
+<Tip>
+**Markdown preserved:** Copied text includes markdown formatting, so you can paste it into other markdown editors.
+</Tip>
+
+### View Timestamp
+
+Tap any message (don't long-press) to briefly show the send/receive time.
+
+### Expand Tool Cards
+
+Tap tool use cards to toggle between collapsed and expanded views:
+
+- **Collapsed:** Clean overview
+- **Expanded:** Full input/output details
+
+## Chat Toolbar
+
+The toolbar between messages and input provides quick access:
+
+<CardGroup cols={2}>
+  <Card title="Clear Chat" icon="trash">
+    Delete all messages, start new session. Requires confirmation.
+  </Card>
+  <Card title="Permission Mode" icon="shield">
+    Change permission behavior (default/accept/plan/bypass)
+  </Card>
+  <Card title="Terminal Access" icon="terminal">
+    Open embedded terminal (if initialized)
+  </Card>
+  <Card title="Context Usage" icon="chart-pie">
+    View token usage and remaining capacity
+  </Card>
+</CardGroup>
+
+### Color-Coded Borders
+
+The toolbar and input borders change color based on permission mode:
+
+- **Gray:** Default mode
+- **Orange:** Accept Edits mode
+- **Blue:** Plan mode
+- **Red:** Bypass All mode
+
+This provides a visual reminder of the current permission level.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Messages not sending" icon="paper-plane">
+    1. Check connection indicator (green dot)
+    2. Verify backend is running
+    3. Try re-entering the chat screen
+    4. Check input is not empty
+    5. Ensure image size is under 30MB
+  </Accordion>
+
+  <Accordion title="Slow responses" icon="clock">
+    1. Check network speed (WiFi vs cellular)
+    2. Large files in context slow processing
+    3. Complex tasks take longer
+    4. Consider clearing chat to reduce context
+  </Accordion>
+
+  <Accordion title="Images won't attach" icon="image">
+    1. Grant camera/photo permissions
+    2. Check image format (JPEG, PNG, WebP)
+    3. Verify total size under 30MB
+    4. Try taking new photo instead of library
+    5. Restart app if stuck
+  </Accordion>
+
+  <Accordion title="Tool cards won't expand" icon="tools">
+    Tap directly on the card body (not on edges). If still not working, restart the app—may be a rendering issue.
+  </Accordion>
+
+  <Accordion title="Context at 100%" icon="chart-pie">
+    1. Clear chat (toolbar > Clear)
+    2. Start new session
+    3. Use shorter prompts
+    4. Avoid re-reading large files
+    5. Split work into multiple sessions
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Tip>
+**Be specific:** Instead of "fix the bug," say "fix the authentication error on line 45 of auth.js"
+</Tip>
+
+<Tip>
+**Use images effectively:** Send error screenshots with context. Include relevant surrounding code.
+</Tip>
+
+<Tip>
+**Monitor context:** Keep an eye on the context indicator. Clear chat before hitting 90%.
+</Tip>
+
+<Tip>
+**Review tool cards:** Always expand and review Edit/Write operations before Claude proceeds.
+</Tip>
+
+<Tip>
+**Choose the right mode:** Use Plan mode for exploration, Accept Edits for trusted modifications.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Settings" icon="gear" href="/mobile/settings">
+    Configure server profiles, permissions, and app preferences
+  </Card>
+  <Card title="Permission System" icon="shield" href="/features/permission-system">
+    Deep dive into the four permission modes
+  </Card>
+  <Card title="Session Management" icon="clock-rotate-left" href="/features/session-management">
+    Learn how to resume and manage conversations
+  </Card>
+  <Card title="Terminal Access" icon="terminal" href="/features/terminal-access">
+    Use the embedded terminal emulator
+  </Card>
+</CardGroup>

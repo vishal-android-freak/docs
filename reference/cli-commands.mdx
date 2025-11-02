@@ -1,0 +1,508 @@
+---
+title: "CLI Commands Reference"
+description: "Complete command-line reference for CCC backend with all flags, arguments, and examples"
+---
+
+## Overview
+
+The CCC backend server is controlled through the `ccc` command-line interface. This reference documents all available commands, options, and their usage.
+
+<Info>
+**CLI flags override environment variables.** If you set an environment variable and pass the corresponding flag, the flag value takes precedence.
+</Info>
+
+---
+
+## Basic Usage
+
+```bash
+ccc [options]
+```
+
+The simplest way to start the CCC backend server is to run `ccc` with no arguments. This starts the server with default settings on localhost.
+
+```bash
+# Start with defaults
+ccc
+
+# Output:
+# ✓ Claude Chat Backend v1.1.1 started successfully
+# Server URLs: localhost:8883
+# Services: MQTT Port 8884, Terminal Port 3001
+```
+
+---
+
+## Global Options
+
+### Version Information
+
+<ParamField path="--version" type="flag" default={false}>
+  Display the current version of CCC backend and exit.
+
+  **Aliases:** `-v`
+
+  ```bash
+  ccc --version
+  # Output: v1.1.1-beta.7
+  ```
+</ParamField>
+
+### Help Information
+
+<ParamField path="--help" type="flag" default={false}>
+  Display help message with all available options and exit.
+
+  **Aliases:** `-h`
+
+  ```bash
+  ccc --help
+  # Displays full command reference
+  ```
+</ParamField>
+
+---
+
+## Authentication Options
+
+CCC supports optional MQTT authentication. Authentication is **required** when using ngrok tunnels for security.
+
+### MQTT Username
+
+<ParamField path="--username" type="string" required={false}>
+  MQTT broker username for client authentication.
+
+  **Aliases:** `-u`
+
+  **Environment Variable:** `MQTT_USERNAME`
+
+  **Required:** Yes, when using `--ngrok-token`
+
+  ```bash
+  ccc --username admin
+  ```
+</ParamField>
+
+### MQTT Password
+
+<ParamField path="--password" type="string" required={false}>
+  MQTT broker password for client authentication.
+
+  **Aliases:** `-p`
+
+  **Environment Variable:** `MQTT_PASSWORD`
+
+  **Required:** Yes, when using `--ngrok-token`
+
+  ```bash
+  ccc --password secret123
+  ```
+</ParamField>
+
+<Warning>
+**Security Best Practice**: Use strong passwords when enabling authentication. Generate random passwords with:
+```bash
+openssl rand -base64 32
+```
+</Warning>
+
+---
+
+## Port Configuration
+
+CCC uses three internal ports that can be customized. All ports bind to `localhost` only for security.
+
+### MQTT Broker Port
+
+<ParamField path="--mqtt-port" type="number" default={8884}>
+  Internal MQTT broker port. The broker handles message queue communication between backend and mobile clients.
+
+  **Environment Variable:** `MQTT_BROKER_PORT`
+
+  **Range:** 1024-65535
+
+  ```bash
+  ccc --mqtt-port 9000
+  ```
+</ParamField>
+
+### Router Port
+
+<ParamField path="--router-port" type="number" default={8883}>
+  Internal request router port. **This is the port mobile apps connect to.** The router proxies requests to MQTT and terminal services.
+
+  **Environment Variable:** `ROUTER_PORT`
+
+  **Range:** 1024-65535
+
+  ```bash
+  ccc --router-port 8080
+  ```
+
+  <Info>
+  **Important**: Use this port in your mobile app connection settings, not the MQTT port.
+  </Info>
+</ParamField>
+
+### Terminal Port
+
+<ParamField path="--terminal-port" type="number" default={3001}>
+  Internal terminal server port. The web-based terminal provides shell access from the mobile app.
+
+  **Environment Variable:** `TERMINAL_PORT`
+
+  **Range:** 1024-65535
+
+  ```bash
+  ccc --terminal-port 4000
+  ```
+
+  <Note>
+  Terminal credentials are auto-generated for security and cannot be configured manually.
+  </Note>
+</ParamField>
+
+### Deprecated: Port Flag
+
+<ParamField path="--port" type="number" deprecated>
+  **DEPRECATED**: Use `--mqtt-port` instead. This flag still works but logs a deprecation warning.
+
+  ```bash
+  # Old (deprecated)
+  ccc --port 9000
+
+  # New (recommended)
+  ccc --mqtt-port 9000
+  ```
+</ParamField>
+
+---
+
+## ngrok Options
+
+Enable remote access to your CCC server through ngrok tunnels. Authentication is **required** when using ngrok.
+
+### ngrok Auth Token
+
+<ParamField path="--ngrok-token" type="string" required={false}>
+  ngrok authentication token to enable public tunnel creation.
+
+  **Aliases:** `-t`
+
+  **Environment Variable:** `NGROK_AUTH_TOKEN`
+
+  **Get Token:** [ngrok.com/signup](https://ngrok.com/signup) (free tier available)
+
+  ```bash
+  ccc --ngrok-token 2abc123def456ghi789jkl
+  ```
+
+  <Warning>
+  **Validation**: When using `--ngrok-token`, you **must** also provide `-u` (username) and `-p` (password) for MQTT authentication. The backend will refuse to start without credentials for security.
+  </Warning>
+</ParamField>
+
+### ngrok Static Domain
+
+<ParamField path="--ngrok-domain" type="string" required={false}>
+  ngrok static domain for consistent URLs. Requires ngrok paid plan.
+
+  **Environment Variable:** `NGROK_DOMAIN`
+
+  **Format:** `subdomain.ngrok-free.app` or custom domain
+
+  ```bash
+  ccc --ngrok-token YOUR_TOKEN \
+      --ngrok-domain myapp.ngrok-free.app \
+      -u admin \
+      -p secret123
+  ```
+</ParamField>
+
+---
+
+## Logging Options
+
+### Debug Mode
+
+<ParamField path="--debug" type="flag" default={false}>
+  Enable debug-level logging for detailed troubleshooting. Logs include MQTT messages, Claude process details, and connection events.
+
+  **Environment Variable:** `LOG_LEVEL=debug`
+
+  ```bash
+  ccc --debug
+  ```
+
+  **Log Output:**
+  - MQTT topic subscriptions
+  - Message payloads (sanitized)
+  - Claude process spawn/exit
+  - Session lifecycle events
+  - Hook execution details
+  - Terminal connections
+</ParamField>
+
+---
+
+## Update Options
+
+### Auto-Update Control
+
+<ParamField path="--no-auto-update" type="flag" default={false}>
+  Disable automatic update checks and downloads on startup. By default, CCC checks npm for newer versions and auto-updates.
+
+  ```bash
+  ccc --no-auto-update
+  ```
+
+  <Info>
+  **Auto-Update Behavior**: When enabled (default), CCC checks for updates on startup. If a newer version is available, it downloads and installs automatically. After successful update, you'll be prompted to restart the server manually.
+  </Info>
+</ParamField>
+
+---
+
+## Complete Options Table
+
+| Option | Alias | Type | Default | Env Variable | Required |
+|--------|-------|------|---------|--------------|----------|
+| `--version` | `-v` | flag | - | - | No |
+| `--help` | `-h` | flag | - | - | No |
+| `--username` | `-u` | string | undefined | `MQTT_USERNAME` | With ngrok |
+| `--password` | `-p` | string | undefined | `MQTT_PASSWORD` | With ngrok |
+| `--mqtt-port` | - | number | 8884 | `MQTT_BROKER_PORT` | No |
+| `--router-port` | - | number | 8883 | `ROUTER_PORT` | No |
+| `--terminal-port` | - | number | 3001 | `TERMINAL_PORT` | No |
+| `--ngrok-token` | `-t` | string | undefined | `NGROK_AUTH_TOKEN` | No |
+| `--ngrok-domain` | - | string | undefined | `NGROK_DOMAIN` | No |
+| `--debug` | - | flag | false | `LOG_LEVEL=debug` | No |
+| `--no-auto-update` | - | flag | false | - | No |
+| `--port` | - | number | - | - | Deprecated |
+
+---
+
+## Examples
+
+### Basic Usage
+
+Start CCC with default settings (localhost only):
+
+```bash
+ccc
+```
+
+**Output:**
+```
+✓ Claude Chat Backend v1.1.1 started successfully
+
+Server URLs (Add one of these in the app settings):
+  Localhost: localhost:8883
+  Network:   192.168.1.100:8883
+
+Services:
+  MQTT:      Port 8884 (via /mqtt)
+  Terminal:  Port 3001 (via /terminal) - Auto-secured
+
+  MQTT Auth: Disabled (localhost only - enable with -u/-p for security)
+```
+
+### With Authentication
+
+Enable MQTT authentication for network access:
+
+```bash
+ccc --username admin --password secret123
+```
+
+**Use Case:** Connecting from mobile devices on the same network with added security.
+
+### With Debug Logging
+
+Troubleshoot connection or permission issues:
+
+```bash
+ccc --debug
+```
+
+**Output includes:**
+- Detailed MQTT message logs
+- Claude process spawning
+- Hook execution traces
+- Session management events
+
+### With Custom Ports
+
+Avoid port conflicts by using custom ports:
+
+```bash
+ccc --mqtt-port 9000 --router-port 9001 --terminal-port 4000
+```
+
+**Important:** Update mobile app connection settings to use port `9001` (router port).
+
+### With ngrok (Remote Access)
+
+Enable public access through ngrok tunnel:
+
+```bash
+ccc --ngrok-token 2abc123def456ghi789jkl \
+    --username admin \
+    --password $(openssl rand -base64 32)
+```
+
+**Output:**
+```
+✓ Claude Chat Backend v1.1.1 started successfully
+
+Server URLs (Add one of these in the app settings):
+  Localhost: localhost:8883
+  Network:   192.168.1.100:8883
+  Public:    abc123.ngrok-free.app
+
+Services:
+  MQTT:      Port 8884 (via /mqtt)
+  Terminal:  Port 3001 (via /terminal) - Auto-secured
+
+  MQTT Auth: Enabled
+```
+
+**Use Case:** Access CCC from anywhere (outside your local network).
+
+### With Static ngrok Domain
+
+Use a consistent ngrok URL (requires paid plan):
+
+```bash
+ccc --ngrok-token YOUR_TOKEN \
+    --ngrok-domain myapp.ngrok-free.app \
+    -u admin \
+    -p my-secure-password
+```
+
+### Production Setup
+
+Complete production configuration with all options:
+
+```bash
+ccc --username admin \
+    --password $(openssl rand -base64 32) \
+    --mqtt-port 8884 \
+    --router-port 8883 \
+    --terminal-port 3001 \
+    --ngrok-token YOUR_NGROK_TOKEN \
+    --ngrok-domain myapp.ngrok-free.app
+```
+
+### Disable Auto-Updates
+
+Prevent automatic updates (useful for CI/CD):
+
+```bash
+ccc --no-auto-update
+```
+
+---
+
+## Exit Codes
+
+CCC exits with the following status codes:
+
+| Code | Meaning | Description |
+|------|---------|-------------|
+| `0` | Success | Server stopped gracefully or help/version displayed |
+| `1` | Error | Fatal error during startup or runtime |
+
+### Common Error Exit Scenarios
+
+**Port Already in Use:**
+```bash
+# Error: EADDRINUSE: address already in use :::8883
+# Exit Code: 1
+```
+
+**ngrok Without Authentication:**
+```bash
+ccc --ngrok-token TOKEN
+# Error: MQTT authentication (-u/-p) required when using ngrok
+# Exit Code: 1
+```
+
+**Missing Dependencies:**
+```bash
+# Error: Claude Code not found in PATH
+# Exit Code: 1
+```
+
+---
+
+## Signal Handling
+
+CCC responds to OS signals for graceful shutdown:
+
+| Signal | Behavior | Timeout |
+|--------|----------|---------|
+| `SIGINT` | Graceful shutdown (Ctrl+C) | 5 seconds |
+| `SIGTERM` | Graceful shutdown (Docker/systemd) | 5 seconds |
+
+**Graceful Shutdown Process:**
+1. Kill all active Claude processes
+2. Stop ngrok tunnel
+3. Stop path router
+4. Stop terminal server
+5. Disconnect MQTT client
+6. Stop MQTT broker
+
+<Warning>
+If graceful shutdown takes longer than 5 seconds, CCC will force exit with code `1`.
+</Warning>
+
+---
+
+## Usage with Environment Variables
+
+You can configure CCC using environment variables instead of CLI flags:
+
+```bash
+# Set environment variables
+export MQTT_USERNAME="admin"
+export MQTT_PASSWORD="secret123"
+export MQTT_BROKER_PORT=9000
+export ROUTER_PORT=9001
+export TERMINAL_PORT=4000
+export NGROK_AUTH_TOKEN="your-token"
+
+# Start with environment config
+ccc
+```
+
+**Precedence:** CLI flags always override environment variables.
+
+```bash
+# Environment says port 9000, flag says 8000
+export MQTT_BROKER_PORT=9000
+ccc --mqtt-port 8000
+# Result: Uses port 8000 (flag wins)
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration Files" icon="file-code" href="/reference/configuration">
+    Learn about `.env`, `settings.local.json`, and session config files
+  </Card>
+
+  <Card title="Environment Variables" icon="code" href="/reference/environment-variables">
+    Complete reference for all supported environment variables
+  </Card>
+
+  <Card title="Terminal Access" icon="terminal" href="/features/terminal-access">
+    Web terminal features and security model
+  </Card>
+
+  <Card title="Remote Access" icon="globe" href="/advanced/remote-access">
+    Detailed ngrok setup and security best practices
+  </Card>
+</CardGroup>

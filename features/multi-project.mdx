@@ -1,0 +1,889 @@
+---
+title: "Multi-Project Support"
+description: "Manage multiple codebases with separate sessions, settings, and organization"
+---
+
+## Overview
+
+Multi-project support allows you to organize and manage multiple codebases simultaneously within CCC. Each project maintains its own sessions, settings, and conversation history, enabling seamless context switching between different development work.
+
+<Info>
+Projects are stored locally on your mobile device and synchronized with the backend server. Each project corresponds to a specific directory path on your development machine.
+</Info>
+
+**Key Benefits:**
+- Separate conversation history per codebase
+- Quick switching between work, personal, and experimental projects
+- Independent session management for each project
+- Organized workspace for multi-repository development
+- Pull-to-refresh synchronization with backend
+
+---
+
+## Why Separate Projects
+
+Creating distinct projects helps maintain clear boundaries and organization:
+
+**Isolation:**
+- Each project has its own session history
+- Conversations don't mix between codebases
+- Claude maintains separate context per project
+- Prevents confusion between similar filenames in different repos
+
+**Organization:**
+- Group related work together (frontend, backend, mobile)
+- Separate client projects for freelance work
+- Distinguish between production and experimental code
+- Maintain work/personal project boundaries
+
+**Performance:**
+- Session lists load faster with fewer items per project
+- Cleaner UI with focused project views
+- Easier to find relevant conversations
+
+<Tip>
+Create a new project whenever you're working on a distinct codebase or repository. Think of projects like workspaces—each one is a self-contained development environment.
+</Tip>
+
+---
+
+## Creating Projects
+
+### From Projects Screen
+
+<Steps>
+  <Step title="Open Projects Tab">
+    Tap the **Projects** tab at the bottom of the screen
+  </Step>
+
+  <Step title="Add New Project">
+    Tap the **+** button in the top-right corner
+  </Step>
+
+  <Step title="Fill Project Details">
+    Enter the following information:
+    - **Project Name** (required): Display name for the project
+    - **Description** (optional): Brief description of the project
+    - **Directory Path** (required): Absolute path to project directory
+  </Step>
+
+  <Step title="Validate Path">
+    The app automatically detects your backend's platform (Windows, macOS, Linux) and validates the path format
+  </Step>
+
+  <Step title="Create Project">
+    Tap **Create** to save the project
+  </Step>
+</Steps>
+
+![Create project form showing name, description, and path fields](images/create-project-form.png)
+
+### Project Name Guidelines
+
+**Good project names:**
+- "E-commerce Backend"
+- "Company Mobile App"
+- "Personal Portfolio"
+- "ML Research - Image Classification"
+
+**Avoid:**
+- Generic names like "Project 1" or "Test"
+- Overly long names (> 50 characters)
+- Special characters or emojis
+
+### Description Tips
+
+Keep descriptions concise but informative:
+
+```
+✅ Good: "Backend REST API for online store"
+✅ Good: "React Native mobile app for iOS/Android"
+❌ Too vague: "My project"
+❌ Too long: "This is the backend API server that powers our e-commerce platform including user authentication, product catalog, shopping cart, payment processing, order management..."
+```
+
+---
+
+## Project Directory Path
+
+### Absolute Path Requirement
+
+CCC requires **absolute paths** to ensure the backend can reliably locate your project directory.
+
+<Warning>
+Relative paths like `./my-app` or `../project` will be rejected. Always use full, absolute paths starting from the root directory.
+</Warning>
+
+### Path Validation
+
+The app validates paths based on the backend's detected platform:
+
+**Windows Paths:**
+```
+Valid:   C:\Users\alice\projects\my-app
+Valid:   D:\Development\api-server
+Invalid: \projects\my-app (missing drive letter)
+Invalid: C:/projects/my-app (use backslashes on Windows)
+```
+
+**Unix/Linux/macOS Paths:**
+```
+Valid:   /home/alice/projects/my-app
+Valid:   /Users/bob/Development/api-server
+Valid:   /var/www/website
+Invalid: ~/projects/my-app (tilde not expanded)
+Invalid: projects/my-app (not absolute)
+```
+
+**WSL (Windows Subsystem for Linux):**
+```
+Valid:   /home/alice/projects/my-app
+Valid:   /mnt/c/Users/alice/projects/my-app
+Invalid: C:\Users\alice\projects\my-app (use WSL path format)
+```
+
+### Platform Detection
+
+When you open the create/edit project modal, CCC automatically:
+
+1. Connects to your backend server
+2. Requests system information (platform, home directory)
+3. Displays platform-specific path examples
+4. Validates your input against platform rules
+
+**Example Helper Text:**
+```
+macOS: /Users/alice/projects/my-app
+Linux: /home/alice/projects/my-app
+Windows: C:\Users\alice\projects\my-app
+```
+
+### Directory Creation
+
+<Info>
+If the specified directory doesn't exist, the backend will create it automatically when you first start a chat session in that project.
+</Info>
+
+This allows you to create project entries before the directory exists on your machine.
+
+---
+
+## Project Metadata
+
+Each project stores the following information:
+
+```typescript
+interface Project {
+  id: string;              // Unique UUID
+  user_id: string;         // Owner user ID
+  name: string;            // Display name
+  description?: string;    // Optional description
+  directory_path: string;  // Absolute path on backend machine
+  created_at: string;      // ISO timestamp
+  updated_at: string;      // ISO timestamp
+}
+```
+
+### Metadata Display
+
+Project cards show:
+- **Name**: Primary identifier
+- **Description**: Brief overview (if provided)
+- **Path**: Full directory path (truncated if too long)
+- **Last Updated**: When project metadata was last modified
+
+![Project card showing metadata](images/project-card-metadata.png)
+
+### Storage Locations
+
+**Mobile App:**
+- Stored in AsyncStorage (encrypted key-value store)
+- Persists across app restarts
+- Syncs with backend on demand
+
+**Backend Server:**
+- Projects list stored in `.claude/sessions.json`
+- Session files stored per project in `~/.claude/projects/{sanitized-path}/`
+
+---
+
+## Project List View
+
+The Projects tab displays all your projects as cards, sorted by last activity.
+
+### Card Layout
+
+Each project card includes:
+
+**Top Section:**
+- Folder icon (left)
+- Project name and description
+- Three-dot menu button (right)
+
+**Bottom Section:**
+- **New Chat** button: Start fresh conversation
+- **Resume** button: Continue latest session (if available)
+
+### Session Information
+
+If a project has existing sessions, the Resume button shows:
+- **Last activity timestamp**: "Just now", "3h ago", "2d ago", etc.
+- **Info icon**: Tap to view all sessions
+
+![Projects list showing multiple project cards](images/projects-list-view.png)
+
+### Quick Actions
+
+**New Chat:**
+- Clears any existing messages from UI
+- Starts fresh conversation in this project
+- Session created when you send first message
+
+**Resume:**
+- Loads most recent session
+- Displays last 50 messages initially
+- Scroll up to load older messages
+- Session picker icon shows all available sessions
+
+**Three-Dot Menu:**
+- **Refresh Sessions**: Update session metadata from backend
+- **Edit Project**: Modify name, description, or path
+- **Delete Project**: Remove project and all sessions
+
+---
+
+## Editing Projects
+
+### Updating Project Details
+
+<Steps>
+  <Step title="Open Menu">
+    Tap the three-dot menu on a project card
+  </Step>
+
+  <Step title="Select Edit">
+    Choose **Edit Project** from the dropdown
+  </Step>
+
+  <Step title="Modify Fields">
+    Update name, description, or directory path
+  </Step>
+
+  <Step title="Save Changes">
+    Tap **Save** to update the project
+  </Step>
+</Steps>
+
+### What You Can Edit
+
+**Project Name:**
+- Change display name at any time
+- Doesn't affect session files or directory
+- Updates immediately in project list
+
+**Description:**
+- Add or modify project description
+- Can be cleared by leaving field empty
+- Helpful for distinguishing similar projects
+
+**Directory Path:**
+- Update if you moved the project directory
+- Must still be an absolute path
+- Validates against platform rules
+
+<Warning>
+Changing the directory path doesn't move files on disk. It only updates where CCC looks for the project. Ensure the new path points to the correct directory before saving.
+</Warning>
+
+### Path Change Impact
+
+If you change a project's directory path:
+
+**Session Files:**
+- Existing session files remain at old location
+- New sessions created at new location
+- Consider manually moving session files:
+  ```bash
+  # Move sessions to new project path
+  mv ~/.claude/projects/{old-sanitized-path}/* \
+     ~/.claude/projects/{new-sanitized-path}/
+  ```
+
+**Active Sessions:**
+- Currently active session remains accessible
+- New sessions use new path
+- Resume button may show old sessions until refresh
+
+---
+
+## Deleting Projects
+
+### Deletion Process
+
+<Steps>
+  <Step title="Open Menu">
+    Tap the three-dot menu on the project to delete
+  </Step>
+
+  <Step title="Select Delete">
+    Choose **Delete Project** (red text)
+  </Step>
+
+  <Step title="Confirm">
+    A confirmation modal appears with warning message
+  </Step>
+
+  <Step title="Confirm Deletion">
+    Tap **Delete** to permanently remove the project
+  </Step>
+</Steps>
+
+![Delete project confirmation modal](images/delete-project-confirmation.png)
+
+### What Gets Deleted
+
+**From Mobile App:**
+- Project entry removed from list
+- All associated message data cleared
+- Session metadata deleted
+
+**From Backend:**
+- **Session files remain on disk** in `~/.claude/projects/`
+- Backend can still access old sessions
+- Manually delete session files if needed:
+  ```bash
+  rm -rf ~/.claude/projects/{sanitized-project-path}
+  ```
+
+<Warning>
+Deleting a project in the mobile app does NOT delete session files from your development machine. Session files must be manually deleted from `~/.claude/projects/` if you want to permanently remove them.
+</Warning>
+
+### Recovery
+
+**Before Deletion:**
+- Project deletion is permanent in the mobile app
+- No undo or recovery option
+- Session files on disk remain intact
+
+**After Deletion:**
+To restore a deleted project:
+1. Create new project with same name and path
+2. Sessions from disk will appear when refreshed
+3. Conversation history restored
+
+---
+
+## Project Organization Tips
+
+### When to Create Separate Projects
+
+**Create a new project for:**
+- Each distinct Git repository
+- Client work vs personal projects
+- Frontend and backend of same app (if separate repos)
+- Experimental/prototype code
+- Different versions of same codebase (v1, v2, etc.)
+
+**Use the same project for:**
+- Monorepo with multiple packages
+- Frontend and backend in same repository
+- Different branches of same codebase
+- Related microservices in one directory
+
+### Naming Conventions
+
+Establish consistent naming patterns:
+
+```
+Work Projects:
+- "Client Name - Project Type" (e.g., "Acme Corp - API")
+- "Company - Component" (e.g., "CompanyX - Mobile App")
+
+Personal Projects:
+- "Project Name - Tech Stack" (e.g., "Portfolio - Next.js")
+- "Category - Description" (e.g., "Blog - Static Site")
+
+Learning Projects:
+- "Course Name - Topic" (e.g., "React Tutorial - Todo App")
+- "Framework - Tutorial Name" (e.g., "Django - Polls App")
+```
+
+### Project Archiving
+
+While CCC doesn't have built-in archiving, you can organize old projects:
+
+**Option 1: Prefix with Archive**
+```
+Rename old projects:
+"Archive - Old E-commerce API"
+"Archive - Deprecated Mobile App"
+```
+
+**Option 2: Delete and Backup**
+```bash
+# Backup sessions before deleting project
+cp -r ~/.claude/projects/old-project-path ~/archives/
+
+# Delete project in mobile app
+# Sessions preserved on disk
+```
+
+**Option 3: Separate User**
+- Create secondary user account for archived projects
+- Keeps main project list clean
+- Access archives by switching users
+
+---
+
+## Pull-to-Refresh
+
+### Syncing with Backend
+
+The Projects screen supports pull-to-refresh to synchronize with the backend:
+
+<Steps>
+  <Step title="Pull Down">
+    Swipe down on the projects list
+  </Step>
+
+  <Step title="Refresh Indicator">
+    A loading spinner appears at the top
+  </Step>
+
+  <Step title="Data Sync">
+    - Fetches latest session metadata from backend
+    - Updates last activity timestamps
+    - Refreshes message counts
+    - Detects new sessions
+  </Step>
+
+  <Step title="Complete">
+    List updates with fresh data
+  </Step>
+</Steps>
+
+**When to Refresh:**
+- After creating new sessions outside the app
+- To check for backend changes
+- To update last activity timestamps
+- When Resume button seems outdated
+
+### Individual Project Refresh
+
+Refresh a single project without reloading all:
+
+<Steps>
+  <Step title="Open Menu">
+    Tap three-dot menu on project card
+  </Step>
+
+  <Step title="Select Refresh">
+    Choose **Refresh Sessions**
+  </Step>
+
+  <Step title="Wait for Update">
+    Loading spinner appears on that card
+  </Step>
+
+  <Step title="View Updated Data">
+    Session metadata refreshes for that project only
+  </Step>
+</Steps>
+
+**Use Individual Refresh:**
+- After running CLI commands that created sessions
+- To verify session count without full reload
+- When only one project needs updating
+
+---
+
+## Storage Details
+
+### AsyncStorage (Mobile)
+
+Projects are stored in the mobile app's local database:
+
+```typescript
+// Storage key format
+@storage:projects:{userId}
+
+// Example stored data
+{
+  "projects": [
+    {
+      "id": "proj-uuid-1234",
+      "user_id": "user-uuid-5678",
+      "name": "E-commerce API",
+      "description": "Backend REST API for online store",
+      "directory_path": "/home/alice/projects/ecommerce-api",
+      "created_at": "2025-10-15T10:30:00.000Z",
+      "updated_at": "2025-11-02T14:45:00.000Z"
+    }
+  ]
+}
+```
+
+**Persistence:**
+- Survives app restarts
+- Cleared only when app data is deleted
+- Encrypted on device
+- Not synced across devices (device-specific)
+
+### Backend Storage (sessions.json)
+
+The backend doesn't maintain a central projects database. Instead:
+
+**Session Discovery:**
+- Backend scans `~/.claude/projects/` directory
+- Lists all subdirectories (sanitized project paths)
+- Reads session files in each directory
+- Returns metadata to mobile app on request
+
+**Sessions File Location:**
+```bash
+~/.claude/projects/
+  ├── home-alice-projects-ecommerce-api/
+  │   ├── session-uuid-1.jsonl
+  │   └── session-uuid-2.jsonl
+  └── Users-bob-work-mobile-app/
+      └── session-uuid-3.jsonl
+```
+
+---
+
+## Path Sanitization
+
+Project directory paths are sanitized for safe filesystem usage:
+
+### Sanitization Rules
+
+The backend converts project paths to directory names:
+
+```typescript
+// Sanitization algorithm
+function sanitizePath(path: string): string {
+  return path
+    .replace(/[\\/]+$/, '')        // Remove trailing slashes
+    .replace(/:[\\/]+/g, '--')     // :/ or :\ → --
+    .replace(/:/g, '--')           // : → --
+    .replace(/[\\/]+/g, '-');      // / or \ → -
+}
+```
+
+### Examples
+
+| Original Path | Sanitized Directory |
+|--------------|---------------------|
+| `/home/alice/projects/api` | `home-alice-projects-api` |
+| `C:\Users\bob\app` | `C--Users-bob-app` |
+| `/var/www:backup/site` | `-var-www--backup-site` |
+| `//network/share/code` | `network-share-code` |
+
+<Info>
+You never see or interact with sanitized paths in the mobile app. This is an internal implementation detail used by the backend for creating session directory names.
+</Info>
+
+---
+
+## Troubleshooting
+
+### Project Not Appearing in List
+
+**Symptoms:**
+- Created project doesn't show in Projects tab
+- Project list is empty after creation
+
+**Solutions:**
+
+1. **Pull to refresh:**
+   - Swipe down on Projects screen
+   - Wait for refresh to complete
+
+2. **Check user context:**
+   - Ensure you're logged into correct user account
+   - Projects are user-specific
+
+3. **Verify creation:**
+   - Look for success toast after creating project
+   - Check for error messages
+
+4. **Restart app:**
+   - Close and reopen mobile app
+   - Projects load from AsyncStorage on startup
+
+### Path Validation Errors
+
+**Symptoms:**
+- Red error message under Directory Path field
+- "Create" button disabled
+- Path shown as invalid
+
+**Solutions:**
+
+**Windows Users:**
+```
+Error: "Windows paths must be absolute (e.g., C:\Users\username\projects)"
+
+Solution: Use full path with drive letter
+✅ C:\Users\alice\projects\my-app
+❌ \Users\alice\projects\my-app
+❌ C:/Users/alice/projects/my-app (use backslashes)
+```
+
+**Unix/Linux/macOS Users:**
+```
+Error: "Path must be absolute (start with /)"
+
+Solution: Use full path from root
+✅ /home/alice/projects/my-app
+✅ /Users/bob/Development/api
+❌ ~/projects/my-app (tilde not expanded)
+❌ projects/my-app (relative path)
+```
+
+**WSL Users:**
+```
+Error: "Path must be absolute (start with /)"
+
+Solution: Use Linux-style path, not Windows path
+✅ /home/alice/projects/my-app
+✅ /mnt/c/Users/alice/projects/my-app
+❌ C:\Users\alice\projects\my-app
+```
+
+### Session Count Mismatch
+
+**Symptoms:**
+- Resume button shows old timestamp
+- Message count seems incorrect
+- Sessions missing from picker
+
+**Solutions:**
+
+1. **Refresh project sessions:**
+   - Tap three-dot menu → Refresh Sessions
+   - Wait for green checkmark or success toast
+
+2. **Pull-to-refresh:**
+   - Swipe down on Projects screen
+   - All projects update
+
+3. **Check backend:**
+   - Verify backend is running
+   - Check MQTT connection (green indicator in Settings)
+   - Review backend logs for errors
+
+4. **Verify session files:**
+   ```bash
+   # Check if sessions exist on disk
+   ls -lh ~/.claude/projects/{sanitized-path}/
+   ```
+
+### Cannot Delete Active Project
+
+**Symptoms:**
+- Delete button grayed out
+- Error when attempting deletion
+- Toast saying "Cannot delete active project"
+
+**Solutions:**
+
+**Not Actually Restricted:**
+- CCC allows deleting projects even if active
+- No special restrictions
+
+**If Issue Persists:**
+1. Close chat session in that project
+2. Switch to different project
+3. Try deleting again
+4. Restart app if needed
+
+### Duplicate Projects
+
+**Symptoms:**
+- Same project appears multiple times
+- Different UUIDs but same path
+
+**Solutions:**
+
+1. **Delete duplicates:**
+   - Delete all but one instance
+   - Keep the project with correct sessions
+
+2. **Verify paths:**
+   - Check if paths are actually identical
+   - May be variations like trailing slashes
+
+3. **Check user accounts:**
+   - Different users can have projects with same path
+   - Ensure you're viewing correct user's projects
+
+---
+
+## Tips & Best Practices
+
+### Start Small
+
+Begin with 2-3 projects and expand as needed:
+
+```
+Initial Setup:
+1. Primary work project
+2. Personal/side project
+3. Learning/experimental project
+```
+
+### Consistent Paths
+
+Use consistent path structures for easier management:
+
+```bash
+# Good: Organized by category
+/home/alice/projects/work/company-api
+/home/alice/projects/work/company-mobile
+/home/alice/projects/personal/blog
+/home/alice/projects/learning/rust-tutorial
+
+# Avoid: Scattered locations
+/home/alice/api
+/var/www/mobile-app
+/tmp/blog
+~/rust-stuff
+```
+
+### Descriptive Names and Descriptions
+
+Make projects self-documenting:
+
+```
+Name: "Acme Corp - Customer Portal"
+Description: "React frontend for customer dashboard (v2.0 rewrite)"
+
+Name: "Personal - Budget Tracker"
+Description: "Next.js app with Supabase backend"
+
+Name: "Learning - FastAPI Tutorial"
+Description: "Following Python API course by Corey Schafer"
+```
+
+### Regular Cleanup
+
+Review projects monthly:
+- Delete completed/abandoned projects
+- Update descriptions for active projects
+- Refresh session metadata
+- Archive old projects
+
+### Use Resume Strategically
+
+**Resume when:**
+- Continuing previous work
+- Context from earlier conversation is needed
+- Building on previous discussion
+
+**New Chat when:**
+- Starting completely new feature
+- Previous context isn't relevant
+- Conversation became too long (> 200 messages)
+
+---
+
+## Code Examples
+
+### Creating a Project Programmatically
+
+```typescript
+import { storage } from '@/lib/storage';
+
+async function createNewProject(
+  name: string,
+  directoryPath: string,
+  description?: string
+) {
+  // Get current user
+  const user = await storage.getUser();
+  if (!user) throw new Error('User not logged in');
+
+  // Create project
+  const project = await storage.createProject({
+    user_id: user.id,
+    name: name.trim(),
+    description: description?.trim(),
+    directory_path: directoryPath.trim(),
+  });
+
+  console.log('Project created:', project.id);
+  return project;
+}
+
+// Usage
+await createNewProject(
+  'E-commerce API',
+  '/home/alice/projects/ecommerce-api',
+  'Backend REST API for online store'
+);
+```
+
+### Fetching Latest Session for Project
+
+```typescript
+import { MQTTClientManager } from '@/lib/mqtt';
+import { storage } from '@/lib/storage';
+
+async function getLatestSession(projectId: string) {
+  const project = await storage.getProject(projectId);
+  if (!project) throw new Error('Project not found');
+
+  const profile = await storage.getActiveProfileWithCredentials();
+  if (!profile) throw new Error('No active server profile');
+
+  const mqtt = new MQTTClientManager(
+    profile.server_url,
+    'temp-client',
+    profile.mqtt_username,
+    profile.mqtt_password,
+    profile.use_ssl,
+    true // disable reconnect
+  );
+
+  await mqtt.connect();
+
+  return new Promise((resolve) => {
+    mqtt.requestLatestSessions([project.directory_path], (response) => {
+      const projectSession = response.projects[0];
+      resolve(projectSession?.latestSession || null);
+      mqtt.disconnect();
+    });
+  });
+}
+
+// Usage
+const latestSession = await getLatestSession('proj-uuid-1234');
+console.log('Latest session:', latestSession?.sessionId);
+```
+
+---
+
+## Related Documentation
+
+- [Session Management](/features/session-management) - Managing conversations within projects
+- [Server Profiles](/features/server-profiles) - Connecting to multiple backend servers
+- [Chat Interface](/mobile/chat-interface) - Using the chat UI
+- [Permission System](/features/permission-system) - Controlling tool access
+
+---
+
+## Summary
+
+Multi-project support enables organized, scalable development workflows:
+
+- Create projects for each distinct codebase
+- Each project maintains separate sessions and history
+- Absolute directory paths required for reliability
+- Pull-to-refresh keeps data synchronized
+- Individual project refresh for targeted updates
+- Projects stored locally on mobile, sessions on backend
+- Path sanitization handles platform differences transparently
+
+Use projects to separate work contexts and maintain clean conversation boundaries across your development portfolio.

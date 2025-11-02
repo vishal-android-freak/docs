@@ -1,0 +1,89 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "CCC",
+  "logo": "/logo/ccc-logo.png",
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#C15F3C",
+    "light": "#D17952",
+    "dark": "#A1502F"
+  },
+  "topbar": {
+    "style": "default"
+  },
+  "tabs": [
+    {
+      "name": "Discord",
+      "url": "https://discord.gg/9EjE8t4YCF"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "introduction",
+        "installation",
+        "quickstart",
+        "core-concepts"
+      ]
+    },
+    {
+      "group": "Features",
+      "pages": [
+        "features/permission-system",
+        "features/chat-streaming",
+        "features/image-attachments",
+        "features/session-management",
+        "features/terminal-access",
+        "features/multi-project",
+        "features/server-profiles"
+      ]
+    },
+    {
+      "group": "Mobile App",
+      "pages": [
+        "mobile/overview",
+        "mobile/installation",
+        "mobile/navigation",
+        "mobile/chat-features",
+        "mobile/settings"
+      ]
+    },
+    {
+      "group": "CLI Reference",
+      "pages": [
+        "reference/cli-commands",
+        "reference/configuration",
+        "reference/environment-variables"
+      ]
+    },
+    {
+      "group": "MQTT Reference",
+      "pages": [
+        "reference/mqtt-topics",
+        "reference/message-formats"
+      ]
+    },
+    {
+      "group": "Advanced",
+      "pages": [
+        "advanced/mqtt-configuration",
+        "advanced/remote-access",
+        "advanced/security",
+        "advanced/custom-hooks",
+        "advanced/performance"
+      ]
+    },
+    {
+      "group": "Help",
+      "pages": [
+        "reference/troubleshooting"
+      ]
+    }
+  ],
+  "footer": {
+    "socials": {
+      "discord": "https://discord.gg/9EjE8t4YCF"
+    }
+  }
+}

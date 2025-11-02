@@ -1,0 +1,751 @@
+---
+title: "Image Attachments"
+description: "Send screenshots, photos, and images to Claude for visual analysis and UI debugging"
+---
+
+## Overview
+
+CCC's image attachment feature lets you send visual content directly to Claude for analysis, debugging, and design feedback. Attach screenshots, photos, design mockups, error messages, or diagrams—Claude's vision capabilities make visual debugging as easy as text-based conversations.
+
+![Chat with image attachments showing screenshot analysis](images/image-attachments-overview.png)
+
+<Info>
+Images are automatically compressed if they exceed size limits, maintaining visual quality while staying within Claude's constraints.
+</Info>
+
+---
+
+## Supported Formats
+
+### Image Types
+
+CCC supports the most common image formats:
+
+- **PNG** - Best for screenshots and UI elements (lossless)
+- **JPEG/JPG** - Great for photos and complex images
+- **GIF** - Static images only (first frame)
+- **WebP** - Modern format with excellent compression
+- **HEIC/HEIF** - iPhone camera format (auto-converted to JPEG)
+
+<Warning>
+Animated GIFs are not supported. Only the first frame will be sent to Claude.
+</Warning>
+
+### Size Limits
+
+<AccordionGroup>
+  <Accordion title="Per-image limit: 5MB" icon="image">
+    Each individual image must be under 5MB after compression. CCC automatically compresses larger images using iterative quality reduction (starting at 80% quality, down to 10% minimum).
+
+    **Compression settings:**
+    - Format: Converted to JPEG for better compression
+    - Quality: 80% → 65% → 50% → 35% → 20% → 10%
+    - Max dimension: 8000px (larger images are resized)
+  </Accordion>
+
+  <Accordion title="Total message limit: 30MB" icon="layer-group">
+    The combined size of all images in a single message cannot exceed 30MB (post-compression). This typically allows 6-10 high-quality images per message.
+
+    **Example capacity:**
+    - 6 images at ~5MB each
+    - 10 images at ~3MB each
+    - 15 images at ~2MB each
+  </Accordion>
+
+  <Accordion title="Maximum image limit: None enforced" icon="images">
+    While there's no hard limit on the number of images per message, the 30MB total size constraint naturally caps it around 6-10 images depending on content complexity.
+
+    **Best practice:** Send 1-4 images per message for focused analysis.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## How to Attach Images
+
+### From Chat Interface
+
+<Steps>
+  <Step title="Tap the Image+ Button">
+    In the chat input area, tap the **image icon** (📷) to the left of the text input field
+  </Step>
+
+  <Step title="Choose Source">
+    A popup appears with two options:
+    - **Choose from library** - Pick existing photos/screenshots
+    - **Take photo** - Use your device camera
+  </Step>
+
+  <Step title="Select Images">
+    **From library:** Select up to 10 images (limited by 30MB total)
+    **Camera:** Take a single photo
+
+    CCC requests camera/photo library permissions on first use.
+  </Step>
+
+  <Step title="Review Preview">
+    Selected images appear as thumbnails above the input field. Tap the **X** on any thumbnail to remove it before sending.
+  </Step>
+
+  <Step title="Add Message (Optional)">
+    Type a message describing what you want Claude to analyze. You can send images without text, and CCC will automatically add "Please analyze these images" as the prompt.
+  </Step>
+
+  <Step title="Send">
+    Tap the **send button** (✈️). Images are compressed in the background and sent to Claude.
+  </Step>
+</Steps>
+
+![Image picker modal showing library and camera options](images/image-picker-modal.png)
+
+### Permissions Required
+
+**First-time setup:**
+
+When you tap the image button for the first time, iOS/Android will prompt for permissions:
+
+- **Photo Library Access** - Required to pick existing images
+- **Camera Access** - Required to take new photos
+
+<Tip>
+If you accidentally deny permissions, go to your device Settings → CCC → Permissions and enable Camera/Photos.
+</Tip>
+
+---
+
+## Image Processing
+
+### Automatic Compression
+
+CCC intelligently compresses images to stay within Claude's limits while maintaining visual quality:
+
+```javascript
+// Compression flow
+1. Load image from URI
+2. Check size (base64)
+3. If > 5MB:
+   a. Convert to JPEG format
+   b. Compress with 80% quality
+   c. Check size again
+   d. If still > 5MB, reduce quality by 15% and retry
+   e. Repeat until &lt; 5MB or quality reaches 10%
+4. Convert to base64 for transmission
+5. Send via MQTT
+```
+
+**Quality progression:**
+- Attempt 1: 80% quality
+- Attempt 2: 65% quality
+- Attempt 3: 50% quality
+- Attempt 4: 35% quality
+- Attempt 5: 20% quality (minimum)
+
+<Info>
+You'll see a toast notification like "Processing 3 image(s)..." while compression happens. Large images may take a few seconds.
+</Info>
+
+### Dimension Handling
+
+Images with dimensions exceeding 8000px on either side are automatically resized:
+
+```javascript
+// If width > 8000 or height > 8000:
+scale = min(8000 / width, 8000 / height)
+newWidth = floor(width * scale)
+newHeight = floor(height * scale)
+```
+
+Aspect ratio is always preserved during resizing.
+
+### HEIC Conversion
+
+iPhone photos saved in HEIC format are automatically converted to JPEG before compression:
+
+```javascript
+// HEIC → JPEG conversion
+1. Detect HEIC/HEIF file extension
+2. Use expo-image-manipulator to convert
+3. Save as JPEG with max quality (100%)
+4. Proceed with standard compression
+```
+
+<Warning>
+HEIC conversion may add 1-2 seconds to upload time for iPhone photos. The conversion ensures compatibility across all platforms.
+</Warning>
+
+### Base64 Encoding
+
+All images are base64-encoded for MQTT transmission:
+
+```json
+{
+  "type": "image",
+  "mimeType": "image/jpeg",
+  "data": "iVBORw0KGgoAAAANSUhEUgAA...", // base64 string
+  "filename": "screenshot-2024-01-15.png"
+}
+```
+
+---
+
+## Use Cases
+
+### UI/UX Debugging
+
+Perfect for fixing visual bugs and layout issues:
+
+**Example prompts:**
+```text
+"Why is this button misaligned?" [attach screenshot]
+"Fix the spacing issues on this mobile screen" [attach screenshot]
+"This dropdown menu is clipped at the bottom" [attach screenshot]
+"The colors don't match our design system" [attach mockup]
+```
+
+![UI debugging with screenshot showing layout issue](images/image-ui-debugging.png)
+
+### Design Feedback
+
+Get Claude's input on designs and mockups:
+
+**Example prompts:**
+```text
+"Make this UI match our design system" [attach mockup + design system screenshot]
+"Implement this Figma design as React components" [attach export]
+"What accessibility issues do you see in this UI?" [attach screenshot]
+"Convert this design to Tailwind CSS" [attach mockup]
+```
+
+### Screenshot Analysis
+
+Analyze error messages, logs, and terminal output:
+
+**Example prompts:**
+```text
+"Debug this error message" [attach error screenshot]
+"What's causing this console warning?" [attach browser console]
+"Fix this TypeScript compilation error" [attach terminal screenshot]
+"Interpret these server logs" [attach log screenshot]
+```
+
+<Tip>
+When sending error screenshots, include the full stack trace and surrounding context for better analysis.
+</Tip>
+
+### Diagram Explanations
+
+Get help understanding architecture diagrams, flowcharts, and technical drawings:
+
+**Example prompts:**
+```text
+"Explain this architecture diagram" [attach diagram]
+"Convert this flowchart to code" [attach flowchart]
+"What design pattern is shown here?" [attach UML diagram]
+"Document this database schema" [attach ERD]
+```
+
+### Whiteboard to Code
+
+Convert sketches and whiteboard photos to working code:
+
+**Example prompts:**
+```text
+"Convert this whiteboard sketch to code" [attach photo]
+"Implement this wireframe as a React component" [attach photo]
+"Turn this flowchart into a TypeScript function" [attach photo]
+"Code this database schema I drew" [attach photo]
+```
+
+![Whiteboard sketch converted to code](images/image-whiteboard-code.png)
+
+---
+
+## Example Prompts
+
+Copy these proven prompts for common scenarios:
+
+<CodeGroup>
+```text UI Debugging
+"Why is this button misaligned?"
+[Attach: Screenshot of misaligned button]
+
+Expected: Claude identifies CSS issues and provides fixes
+```
+
+```text Design Implementation
+"Implement this design as a React component with Tailwind"
+[Attach: Figma export or mockup]
+
+Expected: Claude creates component matching the design
+```
+
+```text Error Analysis
+"Debug this error and fix the root cause"
+[Attach: Error screenshot with stack trace]
+
+Expected: Claude explains error and provides solution
+```
+
+```text Code Review
+"Review this PR for visual bugs"
+[Attach: Before/after screenshots]
+
+Expected: Claude compares images and spots issues
+```
+
+```text Responsive Design
+"Make this layout responsive for mobile"
+[Attach: Desktop screenshot]
+
+Expected: Claude suggests breakpoints and CSS changes
+```
+
+```text Accessibility Audit
+"What accessibility issues do you see?"
+[Attach: UI screenshot]
+
+Expected: Claude identifies ARIA, contrast, and navigation issues
+```
+</CodeGroup>
+
+---
+
+## Technical Details
+
+### Libraries Used
+
+CCC's image attachment feature is built with:
+
+- **expo-image-picker** - Native image picker and camera access
+- **expo-image-manipulator** - Compression, resizing, format conversion
+- **react-native Image API** - Display and validation
+
+### Compression Implementation
+
+```javascript
+// From lib/imageUtils.ts
+const MAX_SIZE_PER_IMAGE = 5 * 1024 * 1024; // 5MB
+const MAX_TOTAL_SIZE = 30 * 1024 * 1024; // 30MB
+const MAX_DIMENSION = 8000;
+
+async function compressImageIfNeeded(uri: string): Promise<string> {
+  const base64 = await uriToBase64(uri);
+  const currentSize = getBase64Size(base64);
+
+  if (currentSize <= MAX_SIZE_PER_IMAGE) {
+    return uri; // Already small enough
+  }
+
+  let quality = 0.8; // Start at 80%
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  while (attempts < maxAttempts) {
+    const context = ImageManipulator.manipulate(uri);
+    // Resize if needed
+    if (dimensions.width > MAX_DIMENSION || dimensions.height > MAX_DIMENSION) {
+      context = context.resize({ width, height });
+    }
+    // Compress and save
+    const imageRef = await context.renderAsync();
+    const result = await imageRef.saveAsync({
+      compress: quality,
+      format: SaveFormat.JPEG,
+    });
+
+    const newSize = getBase64Size(await uriToBase64(result.uri));
+    if (newSize <= MAX_SIZE_PER_IMAGE) {
+      return result.uri;
+    }
+
+    quality -= 0.15; // Reduce by 15%
+    attempts++;
+  }
+
+  return uri; // Return best attempt
+}
+```
+
+### MIME Type Detection
+
+```javascript
+// Automatic MIME type detection from file extension
+function getMimeTypeFromUri(uri: string): string {
+  const extension = uri.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'png': return 'image/png';
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg';
+    case 'gif': return 'image/gif';
+    case 'webp': return 'image/webp';
+    case 'heic': return 'image/heic';
+    case 'heif': return 'image/heif';
+    default: return 'image/jpeg';
+  }
+}
+```
+
+### Attachment Storage
+
+Images are stored locally in the message database with their URI for display:
+
+```typescript
+// Message with attachments
+{
+  id: "msg-uuid-1234",
+  role: "user",
+  content: "Fix this UI bug",
+  attachments: [
+    {
+      type: "image",
+      uri: "file:///path/to/image.jpg", // Local URI for display
+      mimeType: "image/jpeg",
+      filename: "screenshot-2024-01-15.jpg"
+    }
+  ]
+}
+```
+
+The base64 data is only created during message sending and is not persisted locally (to save storage space).
+
+---
+
+## Limitations
+
+### No Video Support
+
+CCC only supports static images. Videos and animated GIFs are not supported.
+
+**Workaround:** Take screenshots of key video frames and send those instead.
+
+### Animated GIFs
+
+Animated GIFs are processed as static images (first frame only).
+
+**Workaround:** Convert GIF to video or extract frames as individual images.
+
+### File Size Constraints
+
+While CCC compresses images automatically, extremely large images (>50MB) are rejected:
+
+```
+Error: "Image size (52.3MB) is too large. Please choose a smaller image."
+```
+
+**Workaround:**
+- Crop the image to focus on relevant areas
+- Use a lower resolution when taking photos
+- Screenshot at lower DPI
+
+### Mobile Data Usage
+
+Sending images uses cellular data if you're not on WiFi. A typical image message:
+
+- 1 image (~3MB compressed): ~3MB data
+- 3 images (~2MB each): ~6MB data
+- 5 images (~4MB each): ~20MB data
+
+<Tip>
+Enable "WiFi Only" in device settings if you're concerned about data usage.
+</Tip>
+
+### Claude Vision Limitations
+
+Claude's vision capabilities have some constraints:
+- Works best with clear, high-contrast images
+- May struggle with very small text (zoom in first)
+- Better at UI/design than handwriting recognition
+- Code in images may have OCR errors (prefer text when possible)
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title='"Image too large" error' icon="triangle-exclamation">
+    **Cause:** Image exceeds 50MB even before compression, or compression couldn't reduce it below 5MB
+
+    **Solutions:**
+    1. Crop the image to focus on the relevant area
+    2. Take a new screenshot at lower resolution
+    3. Use a different image format (JPEG instead of PNG)
+    4. Reduce image dimensions before uploading
+    5. Split into multiple smaller images
+  </Accordion>
+
+  <Accordion title="Permission denied errors" icon="lock">
+    **Cause:** Camera or photo library permissions not granted
+
+    **Solutions:**
+    - **iOS:** Settings → CCC → Photos → "All Photos" or "Selected Photos"
+    - **iOS:** Settings → CCC → Camera → Enable
+    - **Android:** Settings → Apps → CCC → Permissions → Camera/Storage → Allow
+    - Uninstall and reinstall app (permissions reset)
+  </Accordion>
+
+  <Accordion title="Image not appearing in message" icon="image-slash">
+    **Cause:** Image failed to load or was removed from device storage
+
+    **Symptoms:**
+    - Gray placeholder with "Image unavailable" text
+    - No thumbnail in chat
+
+    **Solutions:**
+    - Ensure image still exists in your photo library
+    - Don't delete photos immediately after sending
+    - Check device storage (low storage can cause issues)
+  </Accordion>
+
+  <Accordion title="Compression quality concerns" icon="compress">
+    **Cause:** Heavy compression reduced image quality too much
+
+    **What's happening:**
+    CCC aggressively compresses to meet Claude's 5MB limit. This may reduce fine detail visibility.
+
+    **Solutions:**
+    - Send fewer images per message (less total compression needed)
+    - Crop to show only the relevant area at full quality
+    - Take screenshots at native resolution (not zoomed/scaled)
+    - Send multiple messages with individual images instead of batching
+  </Accordion>
+
+  <Accordion title='"Processing images..." takes too long' icon="clock">
+    **Cause:** Large images require multiple compression passes or HEIC conversion
+
+    **Expected times:**
+    - Small images (&lt;1MB): Instant
+    - Medium images (1-3MB): 1-2 seconds
+    - Large images (5-10MB): 3-5 seconds
+    - Very large images (&gt;10MB) or HEIC: 5-10 seconds
+
+    **Solutions:**
+    - Wait for processing to complete (it's working)
+    - Check your internet connection (doesn't affect processing, but affects send)
+    - Reduce image size before uploading
+    - Close other apps if device is slow
+  </Accordion>
+
+  <Accordion title="HEIC images cause errors" icon="circle-xmark">
+    **Cause:** HEIC conversion failed or format not fully supported
+
+    **Solution:**
+    Before taking photo:
+    - **iOS:** Settings → Camera → Formats → "Most Compatible" (uses JPEG)
+    - **Android:** HEIC is rare; use JPEG in camera settings
+
+    This prevents conversion issues entirely.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Best Practices
+
+### Image Quality Tips
+
+<CardGroup cols={2}>
+  <Card title="Use screenshots for code" icon="code">
+    Screenshots are clearer than photos for code, terminal output, and UI elements
+  </Card>
+  <Card title="High contrast for text" icon="adjust">
+    Ensure error messages and logs have good contrast for better OCR
+  </Card>
+  <Card title="Crop to focus area" icon="crop">
+    Remove unnecessary context to reduce file size and improve analysis
+  </Card>
+  <Card title="Good lighting for photos" icon="lightbulb">
+    Whiteboard/sketch photos need good lighting to avoid shadows
+  </Card>
+</CardGroup>
+
+### Effective Prompting
+
+**Good:**
+```text
+"Fix the alignment issue with the submit button in this form"
+[Attach: Screenshot showing the form]
+```
+
+**Better:**
+```text
+"The submit button in LoginForm.tsx is misaligned on mobile (&lt; 768px).
+It should be centered with 16px padding. Fix the CSS."
+[Attach: Screenshot showing mobile view]
+```
+
+The second prompt provides context, file names, and specific requirements—making Claude's response more actionable.
+
+### Message Organization
+
+**Avoid:** Sending 10 images in one message with "fix all these"
+
+**Prefer:** Breaking into focused messages:
+1. "Fix button alignment" [1 image]
+2. "Fix color scheme" [2 images: before + design system]
+3. "Fix responsive layout" [3 images: mobile/tablet/desktop]
+
+This makes responses more organized and easier to review.
+
+---
+
+## Privacy & Security
+
+### Local Processing
+
+All image compression and processing happens **locally on your device**. Images are never sent to external servers during compression.
+
+### Transmission Security
+
+Images are base64-encoded and transmitted via:
+1. **MQTT over WebSocket** (localhost by default)
+2. **TLS encryption** if you enable SSL in server profile
+3. **ngrok tunnel** if using remote access (encrypted by default)
+
+### Storage
+
+**Mobile app:**
+- Stores image URIs (pointers to device photo library)
+- Does NOT store base64 data (saves storage space)
+- Clearing chat history removes attachment references
+
+**Backend:**
+- Does NOT store images
+- Images only exist in Claude's session context
+- Session files contain image data temporarily during conversation
+
+<Warning>
+Be mindful of what you send to Claude. Avoid images containing:
+- Passwords or API keys visible on screen
+- Personal information (names, addresses, etc.)
+- Proprietary code or designs without authorization
+- Customer data or private information
+</Warning>
+
+---
+
+## Code References
+
+Explore the implementation in the CCC codebase:
+
+<CodeGroup>
+```typescript Mobile: Image Picker Logic
+// app/chat/[id].tsx (lines 966-1020)
+async function handlePickImages() {
+  const assets = await pickImages();
+  if (assets.length > 0) {
+    const validation = await validateImages(
+      assets.map(asset => ({
+        uri: asset.uri,
+        mimeType: getMimeTypeFromUri(asset.uri),
+      }))
+    );
+    if (validation.valid) {
+      setSelectedImages(prev => [...prev, ...assets]);
+    }
+  }
+}
+```
+
+```typescript Mobile: Image Compression
+// lib/imageUtils.ts (lines 118-193)
+export async function compressImageIfNeeded(uri: string): Promise<string> {
+  const base64 = await uriToBase64(uri);
+  const currentSize = getBase64Size(base64);
+
+  if (currentSize <= MAX_SIZE_PER_IMAGE) {
+    return uri;
+  }
+
+  let quality = 0.8;
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  while (attempts < maxAttempts) {
+    // Compression logic...
+  }
+
+  return uri;
+}
+```
+
+```typescript Mobile: Send with Attachments
+// app/chat/[id].tsx (lines 1026-1090)
+async function handleSend() {
+  // Create message attachments for storage (with URI for display)
+  const messageAttachments = imagesToProcess.map(asset => ({
+    type: 'image',
+    uri: asset.uri,
+    mimeType: getMimeTypeFromUri(asset.uri),
+    filename: asset.uri.split('/').pop(),
+  }));
+
+  // Process images in background (compression)
+  let attachments: Attachment[] | undefined;
+  if (imagesToProcess.length > 0) {
+    attachments = await Promise.all(
+      imagesToProcess.map(asset => assetToAttachment(asset))
+    );
+  }
+
+  // Publish to MQTT
+  await mqttClient.publish({
+    message: userMessage,
+    projectPath: project.directory_path,
+    attachments,
+  });
+}
+```
+
+```typescript Mobile: Display Images
+// components/chat/UserMessage.tsx (lines 40-67)
+{hasAttachments && (
+  <View style={styles.attachmentsContainer}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      {message.attachments!.map((attachment, index) => (
+        <View key={index} style={styles.imageWrapper}>
+          {failedImages.has(index) ? (
+            <View style={styles.imagePlaceholder}>
+              <ImageOff size={40} color={colors.text.light} />
+              <Text style={styles.placeholderText}>
+                Image unavailable
+              </Text>
+            </View>
+          ) : (
+            <Image
+              source={{ uri: attachment.uri }}
+              style={styles.image}
+              resizeMode="cover"
+              onError={() => handleImageError(index)}
+            />
+          )}
+        </View>
+      ))}
+    </ScrollView>
+  </View>
+)}
+```
+</CodeGroup>
+
+**Full implementation:**
+- Mobile image picker: `/home/naarang/projects/cc/claude-chat-app/app/chat/[id].tsx`
+- Image utilities: `/home/naarang/projects/cc/claude-chat-app/lib/imageUtils.ts`
+- User message display: `/home/naarang/projects/cc/claude-chat-app/components/chat/UserMessage.tsx`
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Permission System" icon="shield-check" href="/features/permission-system">
+    Control what tools Claude can use after analyzing images
+  </Card>
+  <Card title="Session Management" icon="clock" href="/features/session-management">
+    Persistent conversations with image history
+  </Card>
+  <Card title="Terminal Access" icon="terminal" href="/features/terminal-access">
+    Execute commands suggested by Claude after image analysis
+  </Card>
+  <Card title="Multi-Project" icon="folder-tree" href="/features/multi-project">
+    Manage images across different projects
+  </Card>
+</CardGroup>

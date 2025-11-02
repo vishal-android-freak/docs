@@ -1,0 +1,322 @@
+---
+title: "MQTT Topics Reference"
+description: "Complete list of all MQTT topics for chat, permissions, sessions, system info, and terminal"
+---
+
+## Overview
+
+CCC uses **MQTT over WebSocket** as the primary communication protocol between the mobile app and backend. All messages are published to specific topics following a hierarchical naming pattern, enabling real-time bidirectional communication with QoS guarantees.
+
+### Key Characteristics
+
+- **Protocol**: MQTT 3.1.1 over WebSocket (`ws://` or `wss://`)
+- **Default QoS**: Level 1 (at least once delivery)
+- **Persistent Sessions**: `clean: false` for message queuing across reconnects
+- **Client ID Format**: `mobile_{projectId}` for mobile apps, `claude-backend` for backend
+- **Port**: Configurable (default: 8884 for MQTT broker, 8883 for router)
+
+<Info>
+The backend uses an **embedded Aedes MQTT broker** that binds to localhost and is accessed through a path router at `/mqtt`. This design ensures security while supporting ngrok tunneling for remote access.
+</Info>
+
+---
+
+## Topic Naming Convention
+
+Topics follow a hierarchical structure with forward slashes as separators:
+
+```
+{category}/{identifier}/{action}
+```
+
+- **category**: The functional area (chat, permissions, sessions, system, etc.)
+- **identifier**: Project ID, client ID, or wildcard (`+`)
+- **action**: Request, response, or specific operation
+
+**Wildcards:**
+- `+` matches a single level (e.g., `chat/+/request` matches any project)
+- Backend subscribes with wildcards, mobile apps use specific project IDs
+
+---
+
+## Chat Topics
+
+Topics for sending messages to Claude Code and receiving streaming responses.
+
+| Topic | Direction | QoS | Retained | Description |
+|-------|-----------|-----|----------|-------------|
+| `chat/{projectId}/request` | App → Backend | 1 | No | Send chat message with optional images and session context |
+| `chat/{projectId}/response` | Backend → App | 1 | No | Receive streaming responses (session, chunk, complete, error) |
+| `chat/{projectId}/cancel` | App → Backend | 1 | No | Cancel the currently running Claude request for this project |
+
+### Usage Pattern
+
+```typescript
+// Mobile app publishes to specific project
+client.publish('chat/my-project-123/request', JSON.stringify(chatRequest), { qos: 1 });
+
+// Mobile app subscribes to responses
+client.subscribe('chat/my-project-123/response', { qos: 1 });
+
+// Backend subscribes with wildcard for all projects
+client.subscribe('chat/+/request', { qos: 1 });
+```
+
+<Note>
+**Project ID Collision**: The backend ignores topics where projectId looks like a session endpoint keyword (`latest`, `count`, `list`) to prevent routing conflicts.
+</Note>
+
+---
+
+## Permission Topics
+
+Bidirectional topics for Claude Code's permission system, allowing the app to approve/deny tool execution.
+
+| Topic | Direction | QoS | Retained | Description |
+|-------|-----------|-----|----------|-------------|
+| `permissions/{projectId}/request` | Backend → App | 1 | No | Backend requests permission to execute a tool |
+| `permissions/{projectId}/response` | App → Backend | 1 | No | App sends permission decision (allow/deny) |
+
+### Request Flow
+
+1. Claude attempts to use a tool (e.g., `Read`, `Edit`, `Bash`)
+2. Backend hooks intercept and publish to `permissions/{projectId}/request`
+3. Mobile app displays permission modal
+4. User approves/denies
+5. App publishes decision to `permissions/{projectId}/response`
+6. Backend executes or blocks the tool accordingly
+
+<CodeGroup>
+```typescript Backend (Publish Request)
+const request: PermissionRequest = {
+  tool_name: 'Bash',
+  tool_input: { command: 'npm install' },
+  session_id: 'abc123',
+  cwd: '/home/user/project',
+  timestamp: Date.now()
+};
+await client.publish(`permissions/${projectId}/request`, JSON.stringify(request));
+```
+
+```typescript Mobile (Publish Response)
+const response: PermissionResponse = {
+  decision: 'allow',
+  timestamp: Date.now(),
+  permissionMode: 'acceptEdits', // Optional: update mode
+  addToAllowedTools: true // Optional: add to allowed list
+};
+await client.publish(`permissions/${projectId}/response`, JSON.stringify(response));
+```
+</CodeGroup>
+
+---
+
+## Session Topics
+
+Topics for fetching session lists, counts, latest sessions, and messages from the `.claude/chats/` directory.
+
+### Session List
+
+| Topic | Direction | QoS | Retained | Description |
+|-------|-----------|-----|----------|-------------|
+| `sessions/list/request` | App → Backend | 1 | No | Request all sessions for a project path |
+| `sessions/list/{clientId}/response` | Backend → App | 1 | No | Response with session metadata array |
+
+### Session Count (Batch)
+
+| Topic | Direction | QoS | Retained | Description |
+|-------|-----------|-----|----------|-------------|
+| `sessions/count/request` | App → Backend | 1 | No | Request session counts for multiple projects |
+| `sessions/count/{clientId}/response` | Backend → App | 1 | No | Response with counts per project |
+
+### Latest Session (Batch)
+
+| Topic | Direction | QoS | Retained | Description |
+|-------|-----------|-----|----------|-------------|
+| `sessions/latest/request` | App → Backend | 1 | No | Request latest session metadata for multiple projects |
+| `sessions/latest/{clientId}/response` | Backend → App | 1 | No | Response with latest session per project |
+
+### Session Messages
+
+| Topic | Direction | QoS | Retained | Description |
+|-------|-----------|-----|----------|-------------|
+| `sessions/messages/request` | App → Backend | 1 | No | Request messages from a specific session (with pagination) |
+| `sessions/messages/{clientId}/response` | Backend → App | 1 | No | Response with message array and hasMore flag |
+
+<Tip>
+Session topics use **client-specific response topics** (`{clientId}`) to avoid message conflicts when multiple devices connect simultaneously. The backend extracts `clientId` from the request and sends the response to `sessions/{type}/{clientId}/response`.
+</Tip>
+
+---
+
+## System Topics
+
+Topics for backend health checks, OS information, and terminal configuration.
+
+| Topic | Direction | QoS | Retained | Description |
+|-------|-----------|-----|----------|-------------|
+| `system/config` | Backend → App | 1 | **Yes** | Terminal credentials and backend configuration (retained message) |
+| `system/os-info/request` | App → Backend | 1 | No | Request OS platform, homedir, suggested project path |
+| `system/os-info/{clientId}/response` | Backend → App | 1 | No | OS information response (platform, homedir, suggestedPath) |
+| `backend/ping` | App → Backend | 1 | No | Health check ping with timestamp |
+| `backend/pong` | Backend → App | 1 | No | Health check response confirming backend is alive |
+
+### System Config (Retained)
+
+The `system/config` topic is **retained**, meaning new clients receive the latest terminal configuration immediately upon connection without needing to request it.
+
+```json
+{
+  "type": "system_config",
+  "terminalConfig": {
+    "enabled": true,
+    "path": "/terminal",
+    "username": "auto-generated-32-chars",
+    "password": "auto-generated-480-chars"
+  },
+  "timestamp": 1698765432000
+}
+```
+
+<Warning>
+Terminal credentials are **auto-generated** with cryptographically secure randomness (32-char username, 480-char password) and cannot be configured by users. This ensures maximum security for terminal access.
+</Warning>
+
+---
+
+## Terminal Topics
+
+Topics for updating the terminal server's working directory.
+
+| Topic | Direction | QoS | Retained | Description |
+|-------|-----------|-----|----------|-------------|
+| `terminal/path/update` | App → Backend | 1 | No | Update terminal's project path when user switches projects |
+
+### Usage
+
+When the user navigates to a different project in the mobile app, the app publishes the new project path so the terminal server adjusts its working directory:
+
+```typescript
+const request = {
+  projectPath: '/home/user/new-project',
+  timestamp: Date.now()
+};
+await client.publish('terminal/path/update', JSON.stringify(request));
+```
+
+The backend validates that the directory exists before updating the terminal server's `projectPath`.
+
+---
+
+## Version Topics
+
+Topics for checking backend and app version compatibility.
+
+| Topic | Direction | QoS | Retained | Description |
+|-------|-----------|-----|----------|-------------|
+| `version/check/request` | App → Backend | 1 | No | Request version check with current app version |
+| `version/check/{clientId}/response` | Backend → App | 1 | No | Response with backend version, update availability, compatibility |
+
+### Response Fields
+
+- `backendVersion`: Current backend version (e.g., `1.5.3-beta.2`)
+- `latestBackendVersion`: Latest version from npm registry (respects channel)
+- `backendUpdateAvailable`: Boolean indicating if backend update exists
+- `backendChannel`: `latest` or `beta` based on current version
+- `minAppVersion`: Minimum mobile app version required by backend
+- `updateRequired`: Boolean indicating if app update is mandatory
+- `updateAvailable`: Reserved for mobile app store checks
+
+<Info>
+The backend automatically checks npm registry (`https://registry.npmjs.org/@naarang/ccc`) to determine if updates are available. Beta versions check the `beta` dist-tag, release versions check `latest`.
+</Info>
+
+---
+
+## Wildcard Subscriptions
+
+### Mobile App Pattern
+
+Mobile apps subscribe to **specific project topics** using their project ID:
+
+```typescript
+const projectId = 'my-project-abc';
+
+// Chat responses for this project
+client.subscribe(`chat/${projectId}/response`, { qos: 1 });
+
+// Permission requests for this project
+client.subscribe(`permissions/${projectId}/request`, { qos: 1 });
+
+// Backend health
+client.subscribe('backend/pong', { qos: 1 });
+
+// System config (retained)
+client.subscribe('system/config', { qos: 1 });
+
+// Client-specific responses
+const clientId = `mobile_${projectId}`;
+client.subscribe(`sessions/list/${clientId}/response`, { qos: 1 });
+client.subscribe(`sessions/messages/${clientId}/response`, { qos: 1 });
+client.subscribe(`version/check/${clientId}/response`, { qos: 1 });
+```
+
+### Backend Pattern
+
+The backend subscribes to **wildcard topics** to handle all projects:
+
+```typescript
+// All chat requests from any project
+client.subscribe('chat/+/request', { qos: 1 });
+client.subscribe('chat/+/cancel', { qos: 1 });
+
+// All permission responses from any project
+client.subscribe('permissions/+/response', { qos: 1 });
+
+// System-wide topics
+client.subscribe('backend/ping', { qos: 1 });
+client.subscribe('system/os-info/request', { qos: 1 });
+client.subscribe('terminal/path/update', { qos: 1 });
+
+// Session topics (no wildcards needed)
+client.subscribe('sessions/list/request', { qos: 1 });
+client.subscribe('sessions/count/request', { qos: 1 });
+client.subscribe('sessions/latest/request', { qos: 1 });
+client.subscribe('sessions/messages/request', { qos: 1 });
+client.subscribe('version/check/request', { qos: 1 });
+```
+
+---
+
+## Code References
+
+### Backend Implementation
+
+- **MQTT Client**: `/home/naarang/projects/cc/backend/src/mqtt/client.ts`
+- **MQTT Broker**: `/home/naarang/projects/cc/backend/src/mqtt-broker.ts`
+- **Topic Handlers**: `/home/naarang/projects/cc/backend/src/index.ts` (lines 411-477)
+- **Type Definitions**: `/home/naarang/projects/cc/backend/src/types/index.ts`
+
+### Mobile App Implementation
+
+- **MQTT Client**: `/home/naarang/projects/cc/claude-chat-app/lib/mqtt.ts`
+- **Type Definitions**: `/home/naarang/projects/cc/claude-chat-app/lib/mqtt.ts` (lines 1-171)
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Message Formats" icon="code" href="/reference/message-formats">
+    See TypeScript interfaces and JSON examples for all message types
+  </Card>
+  <Card title="Permission System" icon="shield" href="/features/permission-system">
+    Learn how permission modes control tool execution
+  </Card>
+  <Card title="Session Management" icon="clock-rotate-left" href="/features/session-management">
+    Understand how chat sessions persist across app restarts
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/reference/troubleshooting">
+    Common MQTT connection issues and solutions
+  </Card>
+</CardGroup>

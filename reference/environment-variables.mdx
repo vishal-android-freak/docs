@@ -1,0 +1,684 @@
+---
+title: "Environment Variables"
+description: "All supported environment variables for CCC backend configuration"
+---
+
+## Overview
+
+CCC backend can be configured using environment variables in addition to command-line flags. Environment variables are loaded from a `.env` file in your working directory or from your shell environment.
+
+<Info>
+**Precedence**: Command-line flags always override environment variables. If you set both, the CLI flag value is used.
+</Info>
+
+---
+
+## Loading Environment Variables
+
+### .env File (Recommended)
+
+Create a `.env` file in the directory where you run `ccc`:
+
+```bash
+# Create .env file
+cat > .env << 'EOF'
+MQTT_USERNAME=admin
+MQTT_PASSWORD=secret123
+MQTT_BROKER_PORT=8884
+ROUTER_PORT=8883
+TERMINAL_PORT=3001
+LOG_LEVEL=info
+EOF
+
+# Start CCC (automatically loads .env)
+ccc
+```
+
+### Shell Environment
+
+Set variables in your shell before running `ccc`:
+
+```bash
+export MQTT_USERNAME="admin"
+export MQTT_PASSWORD="secret123"
+export MQTT_BROKER_PORT=8884
+
+ccc
+```
+
+### Override with CLI Flags
+
+CLI flags take precedence over environment variables:
+
+```bash
+# .env has MQTT_BROKER_PORT=8884
+# Flag overrides to 9000
+ccc --mqtt-port 9000
+```
+
+<Warning>
+**Security**: Never commit `.env` files to version control. Add to `.gitignore`:
+```bash
+echo ".env" >> .gitignore
+```
+</Warning>
+
+---
+
+## MQTT Variables
+
+Configure the internal MQTT broker for message communication.
+
+### MQTT_USERNAME
+
+<ParamField path="MQTT_USERNAME" type="string" default="undefined">
+  Username for MQTT broker authentication.
+
+  **CLI Flag:** `--username`, `-u`
+
+  **Required:** Yes, when using ngrok tunnels
+
+  **Default:** No authentication
+
+  **Example:**
+  ```bash
+  MQTT_USERNAME=admin
+  ```
+
+  <Note>
+  MQTT authentication is **required** when using ngrok for security. The backend will refuse to start with ngrok enabled but no credentials.
+  </Note>
+</ParamField>
+
+### MQTT_PASSWORD
+
+<ParamField path="MQTT_PASSWORD" type="string" default="undefined">
+  Password for MQTT broker authentication.
+
+  **CLI Flag:** `--password`, `-p`
+
+  **Required:** Yes, when using ngrok tunnels
+
+  **Default:** No authentication
+
+  **Example:**
+  ```bash
+  MQTT_PASSWORD=secret123
+  ```
+
+  **Generate Strong Password:**
+  ```bash
+  # Generate random password
+  MQTT_PASSWORD=$(openssl rand -base64 32)
+  echo "MQTT_PASSWORD=$MQTT_PASSWORD" >> .env
+  ```
+</ParamField>
+
+### MQTT_BROKER_PORT
+
+<ParamField path="MQTT_BROKER_PORT" type="number" default={8884}>
+  Internal MQTT broker listening port.
+
+  **CLI Flag:** `--mqtt-port`
+
+  **Range:** 1024-65535
+
+  **Example:**
+  ```bash
+  MQTT_BROKER_PORT=9000
+  ```
+
+  <Info>
+  This is the **internal** MQTT port. Mobile apps connect to `ROUTER_PORT`, not this port directly.
+  </Info>
+</ParamField>
+
+### MQTT_CLIENT_ID
+
+<ParamField path="MQTT_CLIENT_ID" type="string" default="claude-backend">
+  MQTT client identifier for the backend connection.
+
+  **No CLI Flag**
+
+  **Example:**
+  ```bash
+  MQTT_CLIENT_ID=my-custom-backend-id
+  ```
+
+  <Note>
+  You typically don't need to change this. The default value `claude-backend` works for most use cases.
+  </Note>
+</ParamField>
+
+### MQTT_QOS
+
+<ParamField path="MQTT_QOS" type="number" default={1}>
+  MQTT Quality of Service level for message delivery.
+
+  **No CLI Flag**
+
+  **Values:**
+  - `0`: At most once (fire and forget)
+  - `1`: At least once (acknowledged delivery)
+  - `2`: Exactly once (assured delivery)
+
+  **Example:**
+  ```bash
+  MQTT_QOS=2  # Guaranteed delivery
+  ```
+
+  **Recommendation:** Use `1` (default) for best balance of reliability and performance.
+</ParamField>
+
+---
+
+## Network Variables
+
+Configure network services and ports.
+
+### ROUTER_PORT
+
+<ParamField path="ROUTER_PORT" type="number" default={8883}>
+  Request router listening port. **This is the port mobile apps connect to.**
+
+  **CLI Flag:** `--router-port`
+
+  **Range:** 1024-65535
+
+  **Example:**
+  ```bash
+  ROUTER_PORT=8080
+  ```
+
+  <Warning>
+  **Important**: When changing `ROUTER_PORT`, update your mobile app connection settings to use the new port.
+  </Warning>
+
+  **Architecture:**
+  - Router proxies `/mqtt` to MQTT broker
+  - Router proxies `/terminal` to terminal server
+  - Mobile app connects only to router, not to MQTT/terminal directly
+</ParamField>
+
+### TERMINAL_PORT
+
+<ParamField path="TERMINAL_PORT" type="number" default={3001}>
+  Web terminal server listening port.
+
+  **CLI Flag:** `--terminal-port`
+
+  **Range:** 1024-65535
+
+  **Example:**
+  ```bash
+  TERMINAL_PORT=4000
+  ```
+
+  <Note>
+  Terminal credentials are auto-generated for security and cannot be configured via environment variables.
+  </Note>
+</ParamField>
+
+---
+
+## ngrok Variables
+
+Enable remote access through ngrok tunnels.
+
+### NGROK_AUTH_TOKEN
+
+<ParamField path="NGROK_AUTH_TOKEN" type="string" default="undefined">
+  ngrok authentication token for creating public tunnels.
+
+  **CLI Flag:** `--ngrok-token`, `-t`
+
+  **Required:** No (enables remote access)
+
+  **Get Token:** [ngrok.com/signup](https://ngrok.com/signup)
+
+  **Example:**
+  ```bash
+  NGROK_AUTH_TOKEN=2abc123def456ghi789jkl
+  ```
+
+  <Warning>
+  **Validation**: When `NGROK_AUTH_TOKEN` is set, you **must** also set `MQTT_USERNAME` and `MQTT_PASSWORD` for security. The backend will exit with an error if ngrok is enabled without MQTT authentication.
+  </Warning>
+</ParamField>
+
+### NGROK_DOMAIN
+
+<ParamField path="NGROK_DOMAIN" type="string" default="undefined">
+  Static ngrok domain for consistent URLs. Requires ngrok paid plan.
+
+  **CLI Flag:** `--ngrok-domain`
+
+  **Required:** No (uses random subdomain if omitted)
+
+  **Format:** `subdomain.ngrok-free.app` or custom domain
+
+  **Example:**
+  ```bash
+  NGROK_DOMAIN=myapp.ngrok-free.app
+  ```
+
+  <Tip>
+  **Free vs Paid**:
+  - Free ngrok: Random subdomain (e.g., `abc123.ngrok-free.app`)
+  - Paid ngrok: Static subdomain (e.g., `myapp.ngrok-free.app`) or custom domain
+  </Tip>
+</ParamField>
+
+---
+
+## Logging Variables
+
+Control logging verbosity and output.
+
+### LOG_LEVEL
+
+<ParamField path="LOG_LEVEL" type="string" default="info">
+  Logging verbosity level.
+
+  **CLI Flag:** `--debug` (sets to `debug`)
+
+  **Values:**
+  - `error`: Only errors
+  - `warn`: Errors and warnings
+  - `info`: Errors, warnings, and info (default)
+  - `debug`: All logs including debug details
+
+  **Example:**
+  ```bash
+  LOG_LEVEL=debug
+  ```
+
+  **Debug Output Includes:**
+  - MQTT message payloads (sanitized)
+  - Claude process lifecycle events
+  - Hook execution traces
+  - Session management details
+  - Terminal connection attempts
+  - Permission request flows
+</ParamField>
+
+---
+
+## Complete Reference Table
+
+| Variable | Type | Default | CLI Flag | Required | Description |
+|----------|------|---------|----------|----------|-------------|
+| `MQTT_USERNAME` | string | `undefined` | `-u`, `--username` | With ngrok | MQTT broker username |
+| `MQTT_PASSWORD` | string | `undefined` | `-p`, `--password` | With ngrok | MQTT broker password |
+| `MQTT_BROKER_PORT` | number | `8884` | `--mqtt-port` | No | Internal MQTT broker port |
+| `MQTT_CLIENT_ID` | string | `claude-backend` | None | No | MQTT client identifier |
+| `MQTT_QOS` | 0\|1\|2 | `1` | None | No | MQTT quality of service |
+| `ROUTER_PORT` | number | `8883` | `--router-port` | No | Request router port (app connects here) |
+| `TERMINAL_PORT` | number | `3001` | `--terminal-port` | No | Terminal server port |
+| `NGROK_AUTH_TOKEN` | string | `undefined` | `-t`, `--ngrok-token` | No | ngrok authentication token |
+| `NGROK_DOMAIN` | string | `undefined` | `--ngrok-domain` | No | ngrok static domain |
+| `LOG_LEVEL` | string | `info` | `--debug` | No | Logging level (error/warn/info/debug) |
+
+---
+
+## Example Configurations
+
+### Minimal Configuration (Localhost Only)
+
+No environment variables needed:
+
+```bash
+# Start with defaults
+ccc
+```
+
+**Result:**
+- MQTT: localhost:8884
+- Router: localhost:8883
+- Terminal: localhost:3001
+- No authentication
+- Info-level logging
+
+### Local Network with Authentication
+
+```bash
+# .env file
+MQTT_USERNAME=admin
+MQTT_PASSWORD=secret123
+MQTT_BROKER_PORT=8884
+ROUTER_PORT=8883
+TERMINAL_PORT=3001
+LOG_LEVEL=info
+```
+
+**Use Case:** Connect from mobile devices on same WiFi with added security.
+
+### Remote Access with ngrok
+
+```bash
+# .env file
+MQTT_USERNAME=admin
+MQTT_PASSWORD=$(openssl rand -base64 32)
+MQTT_BROKER_PORT=8884
+ROUTER_PORT=8883
+TERMINAL_PORT=3001
+NGROK_AUTH_TOKEN=your-ngrok-token-here
+LOG_LEVEL=info
+```
+
+**Use Case:** Access CCC from anywhere (outside local network).
+
+### Static ngrok Domain (Paid Plan)
+
+```bash
+# .env file
+MQTT_USERNAME=admin
+MQTT_PASSWORD=my-secure-password
+MQTT_BROKER_PORT=8884
+ROUTER_PORT=8883
+TERMINAL_PORT=3001
+NGROK_AUTH_TOKEN=your-ngrok-token
+NGROK_DOMAIN=myapp.ngrok-free.app
+LOG_LEVEL=info
+```
+
+**Use Case:** Consistent URL for mobile app configuration.
+
+### Development with Debug Logging
+
+```bash
+# .env file
+MQTT_USERNAME=dev
+MQTT_PASSWORD=devpass
+MQTT_BROKER_PORT=9000
+ROUTER_PORT=9001
+TERMINAL_PORT=4000
+LOG_LEVEL=debug
+```
+
+**Use Case:** Troubleshooting issues, developing features.
+
+### Custom Ports (Avoid Conflicts)
+
+```bash
+# .env file
+MQTT_BROKER_PORT=10884
+ROUTER_PORT=10883
+TERMINAL_PORT=13001
+```
+
+**Use Case:** Port 8883/8884/3001 already in use by other services.
+
+---
+
+## Security Best Practices
+
+### Strong Password Generation
+
+Generate cryptographically secure passwords:
+
+```bash
+# Bash/Linux/macOS
+openssl rand -base64 32
+
+# Or use this one-liner to add to .env
+echo "MQTT_PASSWORD=$(openssl rand -base64 32)" >> .env
+```
+
+### Restrict .env File Permissions
+
+Prevent unauthorized access to credentials:
+
+```bash
+# Set read-only for owner
+chmod 600 .env
+
+# Verify permissions
+ls -l .env
+# Output: -rw------- 1 user user 123 Nov 2 12:00 .env
+```
+
+### Use Different Passwords per Environment
+
+Don't reuse passwords across development, staging, and production:
+
+```bash
+# Development
+MQTT_PASSWORD=dev-password-123
+
+# Production
+MQTT_PASSWORD=$(openssl rand -base64 32)
+```
+
+### Never Commit .env Files
+
+Add to `.gitignore` immediately:
+
+```bash
+echo ".env" >> .gitignore
+echo ".env.local" >> .gitignore
+echo ".env.*.local" >> .gitignore
+```
+
+### Use Environment-Specific Files
+
+Manage multiple environments:
+
+```bash
+.env.development
+.env.staging
+.env.production
+```
+
+Load specific environment:
+```bash
+# Development
+cp .env.development .env
+ccc
+
+# Production
+cp .env.production .env
+ccc
+```
+
+<Warning>
+**Production Security**: In production environments:
+- Use ngrok with authentication
+- Generate strong random passwords
+- Restrict `.env` file permissions (chmod 600)
+- Never commit credentials to version control
+- Rotate passwords regularly
+</Warning>
+
+---
+
+## Precedence Rules
+
+Understanding how CCC resolves configuration values:
+
+### Priority Order (Highest to Lowest)
+
+1. **Command-line flags**: `ccc --mqtt-port 9000`
+2. **Environment variables**: `MQTT_BROKER_PORT=9000`
+3. **Default values**: `8884`
+
+### Examples
+
+**CLI flag overrides .env:**
+```bash
+# .env
+MQTT_BROKER_PORT=8000
+
+# Command
+ccc --mqtt-port 9000
+
+# Result: Uses 9000 (CLI wins)
+```
+
+**Environment variable overrides default:**
+```bash
+# .env
+MQTT_BROKER_PORT=9000
+
+# Command
+ccc
+
+# Result: Uses 9000 (env wins over default 8884)
+```
+
+**Partial overrides:**
+```bash
+# .env
+MQTT_BROKER_PORT=9000
+ROUTER_PORT=9001
+
+# Command
+ccc --mqtt-port 8000
+
+# Result:
+# - MQTT_BROKER_PORT: 8000 (CLI override)
+# - ROUTER_PORT: 9001 (from .env)
+```
+
+---
+
+## Troubleshooting
+
+### .env File Not Loaded
+
+**Symptom:** Environment variables in `.env` are ignored.
+
+**Solutions:**
+1. Check `.env` is in the directory where you run `ccc`:
+   ```bash
+   pwd
+   ls -la .env
+   ```
+
+2. Verify file format (no spaces around `=`):
+   ```bash
+   # Correct
+   MQTT_USERNAME=admin
+
+   # Incorrect
+   MQTT_USERNAME = admin
+   ```
+
+3. Check for syntax errors:
+   ```bash
+   cat .env
+   ```
+
+### Port Already in Use
+
+**Symptom:** `Error: EADDRINUSE: address already in use :::8883`
+
+**Solution:** Change port in `.env`:
+```bash
+ROUTER_PORT=9000
+MQTT_BROKER_PORT=9001
+TERMINAL_PORT=4000
+```
+
+### ngrok Fails with Auth Error
+
+**Symptom:** `Error: MQTT authentication (-u/-p) required when using ngrok`
+
+**Solution:** Add authentication to `.env`:
+```bash
+MQTT_USERNAME=admin
+MQTT_PASSWORD=$(openssl rand -base64 32)
+NGROK_AUTH_TOKEN=your-token
+```
+
+### Debug Not Working
+
+**Symptom:** `LOG_LEVEL=debug` doesn't show debug logs.
+
+**Solution:** Use CLI flag instead:
+```bash
+ccc --debug
+```
+
+CLI flag `--debug` is more reliable than `LOG_LEVEL=debug`.
+
+---
+
+## Validation
+
+CCC validates environment variables on startup:
+
+### Type Validation
+
+**Port Numbers:**
+```bash
+# Valid
+MQTT_BROKER_PORT=8884
+
+# Invalid (string)
+MQTT_BROKER_PORT=abc
+# Error: Invalid port number
+```
+
+**QoS Level:**
+```bash
+# Valid
+MQTT_QOS=0  # or 1 or 2
+
+# Invalid
+MQTT_QOS=3
+# Error: Invalid QoS level (must be 0, 1, or 2)
+```
+
+### Range Validation
+
+**Ports:**
+```bash
+# Valid
+ROUTER_PORT=8883
+
+# Invalid (too low)
+ROUTER_PORT=80
+# Error: Port must be >= 1024
+
+# Invalid (too high)
+ROUTER_PORT=70000
+# Error: Port must be <= 65535
+```
+
+### Required Field Validation
+
+**ngrok with Authentication:**
+```bash
+# Invalid
+NGROK_AUTH_TOKEN=token
+# (Missing MQTT_USERNAME and MQTT_PASSWORD)
+# Error: MQTT authentication required with ngrok
+
+# Valid
+NGROK_AUTH_TOKEN=token
+MQTT_USERNAME=admin
+MQTT_PASSWORD=secret
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="CLI Commands" icon="terminal" href="/reference/cli-commands">
+    Complete command-line reference with all flags
+  </Card>
+
+  <Card title="Configuration Files" icon="file-code" href="/reference/configuration">
+    Learn about settings.local.json and session-config.json
+  </Card>
+
+  <Card title="Remote Access" icon="globe" href="/advanced/remote-access">
+    Detailed ngrok setup and security guide
+  </Card>
+
+  <Card title="Security Best Practices" icon="shield" href="/advanced/security">
+    Production security recommendations
+  </Card>
+</CardGroup>

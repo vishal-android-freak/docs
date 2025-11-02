@@ -1,0 +1,1812 @@
+---
+title: "Troubleshooting Guide"
+description: "Common issues, error messages, and solutions for CCC backend and mobile app"
+---
+
+## Overview
+
+This guide covers common problems you might encounter with the CCC backend and mobile app, organized by category. Each issue includes symptoms, possible causes, step-by-step solutions, and prevention tips.
+
+<Tip>
+**Quick Diagnostic Checklist:**
+1. Is the backend running? (`ccc` command started)
+2. Is the server URL correct in app settings?
+3. Can you ping the backend? (check connection status in app)
+4. Are there any errors in backend logs? (check terminal output)
+5. Is Claude Code installed? (`claude --version`)
+</Tip>
+
+---
+
+<AccordionGroup>
+  <Accordion title="Connection Issues" icon="wifi" defaultOpen>
+    ### Can't Connect to Backend
+
+    **Symptoms:**
+    - App shows "Disconnected" or "Reconnecting" status
+    - Connection timeout errors
+    - "Failed to connect to MQTT broker" message
+
+    **Possible Causes:**
+    1. Backend is not running
+    2. Incorrect server URL in app settings
+    3. Firewall blocking connection
+    4. Wrong MQTT port configured
+    5. Network connectivity issues
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Verify Backend is Running">
+        Check if the backend process is active:
+
+        ```bash
+        # You should see output like "✓ Claude Chat Backend v1.5.3 started successfully"
+        # If not, start it:
+        ccc
+        ```
+
+        Look for these lines in the output:
+        ```
+        Server URLs (Add one of these in the app settings):
+          Localhost: localhost:8883
+          Network:   192.168.1.100:8883
+        ```
+      </Step>
+
+      <Step title="Check Server URL in App">
+        1. Open app settings
+        2. Verify the server URL matches backend output exactly
+        3. Use `localhost:8883` for same device
+        4. Use network IP (e.g., `192.168.1.100:8883`) for different devices on same network
+        5. Use ngrok URL for remote access
+
+        **Common mistakes:**
+        - Including `http://` or `ws://` prefix (don't include protocol)
+        - Wrong port number
+        - Typo in IP address
+      </Step>
+
+      <Step title="Test Network Connectivity">
+        On the device running the app, try pinging the backend host:
+
+        ```bash
+        # Linux/macOS
+        ping 192.168.1.100
+
+        # Windows
+        ping 192.168.1.100
+
+        # If ping fails, check:
+        # - Both devices are on same network
+        # - Firewall isn't blocking connections
+        # - IP address is correct
+        ```
+      </Step>
+
+      <Step title="Check Firewall Settings">
+        Ensure firewall allows connections to the router port (default: 8883):
+
+        ```bash
+        # Linux (ufw)
+        sudo ufw allow 8883/tcp
+
+        # macOS
+        # Go to System Preferences > Security & Privacy > Firewall
+        # Allow incoming connections for the terminal app
+
+        # Windows
+        # Go to Windows Defender Firewall > Advanced Settings
+        # Create inbound rule for port 8883
+        ```
+      </Step>
+
+      <Step title="Verify Port Configuration">
+        If you changed the default port, ensure both backend and app use the same port:
+
+        ```bash
+        # Start backend with custom port
+        ccc --router-port 9000
+
+        # In app, use: localhost:9000
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Save server URL as a profile in the app for quick switching
+    - Use ngrok for stable remote access instead of changing network IPs
+    - Keep backend running in a terminal multiplexer (tmux/screen) to prevent accidental closure
+
+    ---
+
+    ### Authentication Failures
+
+    **Symptoms:**
+    - "Invalid credentials" error
+    - Connection drops immediately after connecting
+    - MQTT authentication failed logs in backend
+
+    **Possible Causes:**
+    1. Username/password mismatch between backend and app
+    2. Special characters in credentials not properly escaped
+    3. Credentials required but not configured
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Verify Backend Configuration">
+        Check how the backend was started:
+
+        ```bash
+        # If started without auth (localhost only)
+        ccc
+
+        # If started with auth (required for ngrok)
+        ccc -u myusername -p mypassword
+        ```
+
+        Backend will log:
+        ```
+        MQTT Auth: Enabled
+        # or
+        MQTT Auth: Disabled (localhost only - enable with -u/-p for security)
+        ```
+      </Step>
+
+      <Step title="Match Credentials in App">
+        1. Open app settings
+        2. If backend auth is disabled, leave username/password empty
+        3. If backend auth is enabled, enter exact same username/password
+        4. Avoid special characters that might cause parsing issues
+      </Step>
+
+      <Step title="Restart Both Backend and App">
+        After updating credentials:
+
+        ```bash
+        # Stop backend (Ctrl+C)
+        # Restart with credentials
+        ccc -u admin -p secure123
+
+        # Force-close and restart mobile app
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Save credentials in app profile to avoid re-entering
+    - Use simple alphanumeric passwords to avoid escaping issues
+    - Always use authentication when enabling ngrok tunnels
+
+    ---
+
+    ### Frequent Disconnects
+
+    **Symptoms:**
+    - Connection status flips between Connected/Disconnected
+    - "Reconnecting..." message appears frequently
+    - Chat messages fail intermittently
+
+    **Possible Causes:**
+    1. Unstable network connection
+    2. Backend resource exhaustion
+    3. Mobile device entering low-power mode
+    4. MQTT keepalive timeout too short
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Check Backend Logs">
+        Look for disconnection patterns in backend terminal:
+
+        ```
+        [MQTT] Client disconnected: mobile_my-project-123
+        [MQTT] Client reconnected: mobile_my-project-123
+        ```
+
+        If you see frequent disconnects, check backend resource usage:
+
+        ```bash
+        # Monitor CPU/memory
+        top
+        # or
+        htop
+        ```
+      </Step>
+
+      <Step title="Disable Battery Optimization">
+        On Android:
+        1. Go to Settings > Apps > CCC
+        2. Battery > Battery optimization
+        3. Select "Don't optimize"
+
+        On iOS:
+        1. Go to Settings > Battery
+        2. Disable Low Power Mode while using CCC
+      </Step>
+
+      <Step title="Use Stable Network">
+        - Switch from cellular to Wi-Fi if unstable
+        - Move closer to router to improve signal strength
+        - Avoid VPNs that might interfere with WebSocket connections
+      </Step>
+
+      <Step title="Increase Keepalive Interval">
+        If using a custom MQTT client, increase keepalive:
+
+        ```typescript
+        // Mobile app connection options
+        {
+          keepalive: 60, // Increase from 30 to 60 seconds
+          reconnectPeriod: 5000,
+          connectTimeout: 30000
+        }
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Use reliable Wi-Fi network for development
+    - Keep device plugged in during long sessions
+    - Monitor backend logs regularly for early warning signs
+  </Accordion>
+
+  <Accordion title="Backend Errors" icon="server">
+    ### Port Already in Use
+
+    **Symptoms:**
+    - Backend fails to start with error: `Error: listen EADDRINUSE: address already in use :::8883`
+    - Backend crashes immediately after launch
+
+    **Possible Causes:**
+    1. Another CCC backend instance is running
+    2. Different application using the same port
+    3. Previous backend process didn't terminate cleanly
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Find Process Using the Port">
+        ```bash
+        # Linux/macOS
+        lsof -i :8883
+        # or
+        netstat -tuln | grep 8883
+
+        # Windows
+        netstat -ano | findstr :8883
+        ```
+      </Step>
+
+      <Step title="Kill the Conflicting Process">
+        ```bash
+        # Linux/macOS (replace PID with actual process ID)
+        kill -9 <PID>
+
+        # Windows (replace PID with actual process ID)
+        taskkill /PID <PID> /F
+        ```
+      </Step>
+
+      <Step title="Use a Different Port">
+        If you need to run multiple instances or can't kill the process:
+
+        ```bash
+        ccc --router-port 9000 --mqtt-port 9001 --terminal-port 9002
+        ```
+
+        Update app settings with new port: `localhost:9000`
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Always stop backend gracefully with Ctrl+C (not force kill)
+    - Use a process manager (PM2, systemd) for automatic cleanup
+    - Assign fixed ports in environment variables to avoid conflicts
+
+    ---
+
+    ### Claude Not Found
+
+    **Symptoms:**
+    - Error: `ENOENT - claude command not found`
+    - Chat requests fail immediately with error response
+    - Backend logs: `Failed to start Claude process`
+
+    **Possible Causes:**
+    1. Claude Code CLI not installed
+    2. Claude not in system PATH
+    3. Wrong shell environment
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Verify Claude Installation">
+        ```bash
+        # Check if Claude is installed
+        claude --version
+
+        # If not found, install Claude Code:
+        npm install -g @anthropic-ai/claude-code
+        # or
+        pnpm install -g @anthropic-ai/claude-code
+        ```
+      </Step>
+
+      <Step title="Check PATH Configuration">
+        ```bash
+        # Verify Claude is in PATH
+        which claude
+        # Should output: /usr/local/bin/claude or similar
+
+        # If not in PATH, find installation location:
+        npm bin -g
+        # Add to PATH in ~/.bashrc or ~/.zshrc:
+        export PATH="$PATH:$(npm bin -g)"
+        ```
+      </Step>
+
+      <Step title="Restart Backend After Installation">
+        ```bash
+        # Stop backend (Ctrl+C)
+        # Reload shell configuration
+        source ~/.bashrc  # or ~/.zshrc
+
+        # Verify Claude is now accessible
+        claude --version
+
+        # Start backend
+        ccc
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Install Claude Code globally so it's always in PATH
+    - Add `$(npm bin -g)` to PATH in shell config for persistence
+    - Test `claude --version` before starting backend
+
+    ---
+
+    ### Permission Denied Errors
+
+    **Symptoms:**
+    - Backend can't create directories
+    - Error: `EACCES: permission denied, mkdir '/home/user/project/.claude'`
+    - Chat requests fail with permission errors
+
+    **Possible Causes:**
+    1. Backend process doesn't have write permissions to project directory
+    2. Project path owned by different user
+    3. SELinux or AppArmor blocking file operations
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Check Directory Permissions">
+        ```bash
+        ls -la /path/to/project
+
+        # Should show your user as owner
+        # If not, change ownership:
+        sudo chown -R $USER:$USER /path/to/project
+        ```
+      </Step>
+
+      <Step title="Verify Backend User">
+        The backend runs as the user who started it:
+
+        ```bash
+        # Check current user
+        whoami
+
+        # Ensure this user has write access to project directory
+        ```
+      </Step>
+
+      <Step title="Fix Permissions">
+        ```bash
+        # Make project directory writable
+        chmod -R u+w /path/to/project
+
+        # If using shared directory, add group write:
+        chmod -R g+w /path/to/project
+        ```
+      </Step>
+
+      <Step title="Check SELinux (Linux only)">
+        ```bash
+        # Check if SELinux is enforcing
+        getenforce
+
+        # Temporarily disable to test (not recommended for production)
+        sudo setenforce 0
+
+        # If that fixes it, add SELinux policy instead of disabling
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Always run backend as the user who owns the project directory
+    - Avoid using `sudo` to start backend unless necessary
+    - Use consistent user accounts across development
+
+    ---
+
+    ### Ngrok Tunnel Failures
+
+    **Symptoms:**
+    - Backend starts but ngrok tunnel fails
+    - Error: `Failed to start ngrok tunnel`
+    - Warning: `continuing without it`
+
+    **Possible Causes:**
+    1. Invalid ngrok auth token
+    2. Ngrok binary not installed
+    3. Network firewall blocking ngrok
+    4. Ngrok domain requires paid plan
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Verify Ngrok Installation">
+        ```bash
+        # Check if ngrok is installed
+        ngrok version
+
+        # If not, install from https://ngrok.com/download
+        # Or via package manager:
+        # macOS
+        brew install ngrok
+
+        # Linux
+        snap install ngrok
+        ```
+      </Step>
+
+      <Step title="Validate Auth Token">
+        ```bash
+        # Test ngrok authentication
+        ngrok authtoken YOUR_TOKEN
+
+        # Try starting a test tunnel
+        ngrok http 8883
+        ```
+      </Step>
+
+      <Step title="Remove Domain Requirement">
+        If using `--ngrok-domain` without a paid plan:
+
+        ```bash
+        # Start without domain (uses random subdomain)
+        ccc -u admin -p secret --ngrok-token YOUR_TOKEN
+
+        # Domain is only needed for paid ngrok plans
+        ```
+      </Step>
+
+      <Step title="Check Authentication Requirement">
+        Ngrok requires MQTT authentication for security:
+
+        ```bash
+        # This will fail:
+        ccc --ngrok-token YOUR_TOKEN
+
+        # This works:
+        ccc -u admin -p secret --ngrok-token YOUR_TOKEN
+        ```
+
+        Backend enforces this requirement and exits with error if violated.
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Save ngrok token in environment variable: `export NGROK_AUTH_TOKEN=...`
+    - Always use MQTT authentication (`-u`/`-p`) with ngrok
+    - Test ngrok setup independently before integrating with backend
+  </Accordion>
+
+  <Accordion title="Mobile App Issues" icon="mobile">
+    ### App Crashes on Startup
+
+    **Symptoms:**
+    - App closes immediately after launch
+    - White screen or crash dialog
+    - No error message visible
+
+    **Possible Causes:**
+    1. Corrupted app data
+    2. Invalid profile configuration
+    3. Incompatible app version
+    4. Missing permissions
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Clear App Data">
+        **Android:**
+        1. Go to Settings > Apps > CCC
+        2. Storage > Clear Data
+        3. Restart app
+
+        **iOS:**
+        1. Uninstall app
+        2. Reinstall from App Store
+        3. Reconfigure profiles
+      </Step>
+
+      <Step title="Check App Version Compatibility">
+        Verify backend and app versions are compatible:
+
+        ```bash
+        # Check backend version
+        ccc --version
+
+        # In app, go to Settings > About
+        # Minimum app version required: 1.0.0
+        ```
+
+        Update backend if app requires newer version:
+
+        ```bash
+        npm update -g @naarang/ccc
+        ```
+      </Step>
+
+      <Step title="Grant Required Permissions">
+        Ensure app has necessary permissions:
+
+        - **Android**: Storage, Network
+        - **iOS**: Local Network (for finding servers)
+
+        Check Settings > Apps > CCC > Permissions
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Keep app and backend versions in sync
+    - Backup profile configurations before updates
+    - Test new releases on non-production projects first
+
+    ---
+
+    ### Chat Stuck on "Loading..."
+
+    **Symptoms:**
+    - Message sent but no response
+    - Loading indicator spins indefinitely
+    - No error message appears
+
+    **Possible Causes:**
+    1. Backend not processing request
+    2. Session ID mismatch
+    3. Claude process hung
+    4. MQTT message not delivered
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Check Backend Logs">
+        Look for request receipt and processing errors:
+
+        ```
+        [DEBUG] Received chat request { projectId: 'my-app-123' }
+        [DEBUG] Using Claude process { isExisting: true }
+        ```
+
+        If no logs appear, backend didn't receive the request.
+      </Step>
+
+      <Step title="Verify MQTT Connection">
+        In app:
+        1. Check connection status (should show "Connected")
+        2. Send a ping to backend
+        3. If disconnected, reconnect before retrying
+
+        Look for pong response in backend logs:
+        ```
+        [DEBUG] Received ping { clientId: 'mobile_my-app-123' }
+        [DEBUG] Sent pong response
+        ```
+      </Step>
+
+      <Step title="Cancel and Retry">
+        1. Tap the cancel button in chat
+        2. Wait for "Request cancelled" confirmation
+        3. Resend the message
+
+        Backend will kill the hung Claude process.
+      </Step>
+
+      <Step title="Clear Chat Session">
+        If problem persists:
+        1. Tap menu > Clear Chat
+        2. Start a new conversation
+        3. Backend will create a fresh Claude process
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Monitor backend logs during development
+    - Keep Claude Code updated to latest version
+    - Avoid sending very large messages (>100KB) that might timeout
+
+    ---
+
+    ### Images Not Sending
+
+    **Symptoms:**
+    - Image picker opens but image doesn't attach
+    - "Attachment validation failed" error
+    - Image appears but chat request fails
+
+    **Possible Causes:**
+    1. Image exceeds size limit (5MB per image, 30MB total)
+    2. Image dimensions exceed 8000x8000
+    3. Unsupported image format
+    4. Corrupted image file
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Check Image Size">
+        Compress large images before attaching:
+
+        - Use image editor to reduce resolution
+        - Convert to JPEG for better compression
+        - Aim for under 2MB per image for best performance
+      </Step>
+
+      <Step title="Verify Format">
+        Supported formats:
+        - PNG (`.png`)
+        - JPEG (`.jpg`, `.jpeg`)
+        - GIF (`.gif`)
+        - WebP (`.webp`)
+
+        Convert unsupported formats using online tools or image editors.
+      </Step>
+
+      <Step title="Check Error Message">
+        Backend validation provides specific errors:
+
+        ```
+        [ERROR] Attachment validation failed: Image size (7.32MB) exceeds maximum of 5MB
+        [ERROR] Attachment validation failed: Unsupported image format
+        [ERROR] Attachment validation failed: Image dimensions (9000x5000) exceed maximum
+        ```
+
+        Address the specific error mentioned.
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Resize images before taking screenshots (use lower device resolution)
+    - Compress images in gallery before selecting
+    - Use PNG for diagrams, JPEG for photos
+
+    ---
+
+    ### Terminal Not Appearing
+
+    **Symptoms:**
+    - Terminal tab is missing or grayed out
+    - "Terminal not available" message
+    - Terminal connection fails
+
+    **Possible Causes:**
+    1. Backend started without terminal server
+    2. Terminal credentials not received
+    3. Terminal port blocked by firewall
+    4. Wrong terminal path in configuration
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Verify Backend Terminal Configuration">
+        Check backend startup logs:
+
+        ```
+        Services:
+          MQTT:      Port 8884 (via /mqtt)
+          Terminal:  Port 3001 (via /terminal) - Auto-secured
+        ```
+
+        If no terminal line appears, backend terminal is disabled.
+      </Step>
+
+      <Step title="Check System Config Message">
+        In app logs or backend logs, verify terminal config was sent:
+
+        ```
+        [DEBUG] System config published to MQTT (retained) { terminalEnabled: true }
+        ```
+
+        App should receive this config on connection.
+      </Step>
+
+      <Step title="Reconnect to Receive Config">
+        1. Disconnect from server in app
+        2. Wait 2 seconds
+        3. Reconnect
+        4. Check if terminal tab appears
+      </Step>
+
+      <Step title="Check Firewall for Terminal Port">
+        ```bash
+        # Allow terminal port (default: 3001)
+        sudo ufw allow 3001/tcp
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Terminal is auto-enabled by default, don't disable it
+    - Ensure system/config topic is retained in MQTT broker
+    - Reconnect app after backend restarts to refresh config
+  </Accordion>
+
+  <Accordion title="Session Issues" icon="clock-rotate-left">
+    ### Can't Resume Session
+
+    **Symptoms:**
+    - Session list shows old sessions but they won't open
+    - "Session not found" error when trying to resume
+    - Tapping session does nothing
+
+    **Possible Causes:**
+    1. Session files deleted or corrupted
+    2. Project path changed
+    3. Session database out of sync
+    4. Permissions issue on `.claude/chats/` directory
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Verify Session Files Exist">
+        ```bash
+        # Check if session files are present
+        ls -la /path/to/project/.claude/chats/
+
+        # Should show session-*.jsonl files
+        # Example: session-20241102_153045_abc123.jsonl
+        ```
+      </Step>
+
+      <Step title="Check Project Path">
+        Ensure project path in app settings matches the actual location:
+
+        1. Open project settings
+        2. Verify path is correct
+        3. Update if directory was moved
+        4. Refresh session list
+      </Step>
+
+      <Step title="Validate Session File Format">
+        ```bash
+        # Check if session file is valid JSONL
+        head -5 /path/to/project/.claude/chats/session-*.jsonl
+
+        # Each line should be valid JSON
+        # If corrupted, you may need to restore from backup
+        ```
+      </Step>
+
+      <Step title="Force Session Refresh">
+        1. Pull down on session list to refresh
+        2. Or switch to different project and back
+        3. Backend will rescan `.claude/chats/` directory
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Don't manually edit session files
+    - Backup `.claude/chats/` directory regularly
+    - Avoid moving projects while sessions are active
+
+    ---
+
+    ### Messages Not Loading
+
+    **Symptoms:**
+    - Session opens but shows empty chat
+    - "Loading messages..." never completes
+    - Some messages appear, others missing
+
+    **Possible Causes:**
+    1. Session file too large to load quickly
+    2. Corrupted JSONL in session file
+    3. Backend timeout reading file
+    4. Pagination issue
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Check Session File Size">
+        ```bash
+        # Check size of session file
+        ls -lh /path/to/project/.claude/chats/session-*.jsonl
+
+        # Files >10MB may load slowly
+        # Files >50MB may timeout
+        ```
+      </Step>
+
+      <Step title="Test Backend Session Read">
+        Check backend logs when opening session:
+
+        ```
+        [DEBUG] Received session messages request
+        [DEBUG] Sent session messages response { messageCount: 45, hasMore: true }
+        ```
+
+        If no response logged, backend failed to read the file.
+      </Step>
+
+      <Step title="Validate JSONL Format">
+        ```bash
+        # Check for syntax errors
+        cat session-*.jsonl | jq empty
+
+        # If errors appear, find the corrupted line:
+        cat session-*.jsonl | jq -c . > /dev/null
+
+        # Manually fix or remove corrupted lines
+        ```
+      </Step>
+
+      <Step title="Enable Pagination">
+        For large sessions, messages load in batches:
+
+        1. Open session
+        2. Scroll to top to load earlier messages
+        3. Backend sends messages in chunks of 50
+
+        Check `hasMore: true` in backend logs to confirm pagination.
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Archive very long sessions (>1000 messages)
+    - Start new sessions for new features/topics
+    - Don't manually edit session files
+
+    ---
+
+    ### Session Count Shows 0
+
+    **Symptoms:**
+    - Projects show "0 sessions" even though sessions exist
+    - Session list is empty
+    - Backend logs show sessions found
+
+    **Possible Causes:**
+    1. App and backend using different project paths
+    2. Case sensitivity mismatch (Linux/macOS)
+    3. Symlinks not resolved correctly
+    4. Clock skew causing timestamp issues
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Compare Paths">
+        **In Backend Logs:**
+        ```
+        [DEBUG] Received session count request { projectPath: '/home/user/my-app' }
+        [DEBUG] Sent session count response { sessionCount: 15 }
+        ```
+
+        **In App:**
+        Check project settings for exact path used
+
+        Paths must match **exactly** (including trailing slashes, symlinks, etc.)
+      </Step>
+
+      <Step title="Resolve Symlinks">
+        ```bash
+        # Get canonical path
+        realpath /path/to/project
+
+        # Use this path in app settings
+        ```
+      </Step>
+
+      <Step title="Check Case Sensitivity">
+        On Linux/macOS, `/home/User/Project` ≠ `/home/user/project`
+
+        Use exact case from:
+        ```bash
+        pwd  # in project directory
+        ```
+      </Step>
+
+      <Step title="Refresh Session Count">
+        1. Switch to a different project
+        2. Switch back to original project
+        3. Backend rescans and sends updated count
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Use absolute paths, not relative paths
+    - Avoid symlinks in project paths
+    - Copy-paste paths from `pwd` to avoid typos
+  </Accordion>
+
+  <Accordion title="Permission Issues" icon="shield">
+    ### Permission Modal Not Appearing
+
+    **Symptoms:**
+    - Tool executes without prompting for approval
+    - No permission modal shown even in Default mode
+    - Backend logs show permission request sent
+
+    **Possible Causes:**
+    1. Permission mode set to "Bypass All"
+    2. Tool already in allowed list
+    3. App not subscribed to permission topic
+    4. Modal dismissed accidentally and cached
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Check Current Permission Mode">
+        In app:
+        1. Tap settings
+        2. Check "Permission Mode" dropdown
+        3. If set to "Bypass All", switch to "Default"
+      </Step>
+
+      <Step title="Review Allowed Tools List">
+        Check if tool was previously allowed:
+
+        ```bash
+        # View project's allowed tools
+        cat /path/to/project/.claude/settings.local.json
+
+        # Look for allowedTools array:
+        {
+          "allowedTools": ["Read", "Write", "Bash"]
+        }
+        ```
+
+        Remove tools you want to be prompted for:
+        1. Edit `settings.local.json`
+        2. Remove tool from `allowedTools` array
+        3. Save file
+        4. Restart app
+      </Step>
+
+      <Step title="Verify MQTT Subscription">
+        Check backend logs when sending a message:
+
+        ```
+        [DEBUG] MQTT client subscribed { topics: ['permissions/my-project-123/request'] }
+        ```
+
+        If not subscribed, app may not receive permission requests.
+
+        Force resubscribe:
+        1. Disconnect from server
+        2. Reconnect
+        3. Send a test message
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Be careful with "Approve & Don't Ask Again" option
+    - Review allowed tools periodically in settings
+    - Use "Default" mode for new projects until familiar with tool usage
+
+    ---
+
+    ### Always Prompted for Same Tool
+
+    **Symptoms:**
+    - Clicked "Approve & Don't Ask Again" but still prompted
+    - Tool not added to allowed list
+    - Permission persists only for current session
+
+    **Possible Causes:**
+    1. `settings.local.json` not writable
+    2. Backend failed to update allowed tools
+    3. Multiple backends overwriting each other
+    4. File permissions issue
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Check File Permissions">
+        ```bash
+        # Verify settings.local.json is writable
+        ls -la /path/to/project/.claude/settings.local.json
+
+        # If read-only, make writable:
+        chmod u+w /path/to/project/.claude/settings.local.json
+        ```
+      </Step>
+
+      <Step title="Manually Add Tool">
+        Edit `settings.local.json` directly:
+
+        ```json
+        {
+          "permissionMode": "default",
+          "allowedTools": [
+            "Read",
+            "Write",
+            "Bash"
+          ]
+        }
+        ```
+
+        Save and restart backend.
+      </Step>
+
+      <Step title="Check Backend Logs">
+        Look for permission update confirmation:
+
+        ```
+        [DEBUG] Updated allowed tools in settings.local.json
+        ```
+
+        If missing, backend encountered an error updating the file.
+      </Step>
+
+      <Step title="Stop Duplicate Backends">
+        Ensure only one backend instance is running for this project:
+
+        ```bash
+        ps aux | grep ccc
+        # Should show only one ccc process
+
+        # Kill duplicates if any
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Ensure `.claude/` directory is writable before starting sessions
+    - Don't run multiple backends pointing to same project
+    - Backup `settings.local.json` before making manual changes
+
+    ---
+
+    ### Bypass Mode Not Working
+
+    **Symptoms:**
+    - Set permission mode to "Bypass All" but still prompted
+    - Some tools still require approval
+    - Backend ignores bypass mode
+
+    **Possible Causes:**
+    1. Mode change not propagated to backend
+    2. Session hooks not updated
+    3. Old session using cached config
+    4. Backend restarted without mode sync
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Verify Mode in Session Config">
+        ```bash
+        # Check current session config
+        cat /path/to/project/.claude/chats/sessions.json
+
+        # Look for permissionMode:
+        {
+          "sessions": {
+            "session-abc123": {
+              "permissionMode": "bypassPermissions"
+            }
+          }
+        }
+        ```
+      </Step>
+
+      <Step title="Clear Chat and Restart">
+        1. In app, tap Clear Chat
+        2. Send a new message
+        3. Backend creates fresh session with current mode
+      </Step>
+
+      <Step title="Update Hooks">
+        Hooks may have cached the old mode:
+
+        ```bash
+        # Delete hooks to force regeneration
+        rm -rf /path/to/project/.claude/hooks
+
+        # Send a new message in app
+        # Backend will regenerate hooks with correct mode
+        ```
+      </Step>
+
+      <Step title="Check Backend Logs">
+        Verify mode is recognized:
+
+        ```
+        [DEBUG] Using Claude process { currentMode: 'bypassPermissions' }
+        ```
+
+        If shows different mode, backend isn't receiving the update.
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Always clear chat after changing permission mode for existing sessions
+    - Bypass mode change takes effect on next message, not retroactively
+    - Hooks are generated once per session, changing mode requires new session
+  </Accordion>
+
+  <Accordion title="Terminal Issues" icon="terminal">
+    ### Can't Connect to Terminal
+
+    **Symptoms:**
+    - Terminal tab loads but shows connection error
+    - "Failed to connect to terminal server" message
+    - Terminal screen is black with no cursor
+
+    **Possible Causes:**
+    1. Terminal server not started
+    2. Wrong terminal credentials
+    3. Terminal port blocked
+    4. Terminal path not set correctly
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Verify Terminal Server Started">
+        Check backend logs:
+
+        ```
+        Services:
+          Terminal:  Port 3001 (via /terminal) - Auto-secured
+        ```
+
+        If missing, terminal server failed to start.
+      </Step>
+
+      <Step title="Check Terminal Credentials">
+        Terminal uses auto-generated credentials from system/config:
+
+        1. In backend logs, verify config was published:
+        ```
+        [DEBUG] System config published to MQTT (retained)
+        ```
+
+        2. In app, terminal should auto-connect using received credentials
+        3. If manual connection needed, credentials are 32+480 chars (copy from logs)
+      </Step>
+
+      <Step title="Test Terminal Port">
+        ```bash
+        # Check if terminal port is listening
+        netstat -tuln | grep 3001
+
+        # Should show:
+        tcp        0      0 127.0.0.1:3001          0.0.0.0:*               LISTEN
+        ```
+
+        If not listening, terminal server failed to start.
+      </Step>
+
+      <Step title="Check Path Router">
+        Terminal is accessed via `/terminal` path on router:
+
+        ```bash
+        # Test terminal endpoint (should show WebSocket upgrade)
+        curl -i http://localhost:8883/terminal
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Terminal is auto-configured, avoid manual overrides
+    - Ensure ports 3001 and 8883 are available before starting backend
+    - Keep terminal credentials secure (they're auto-generated for security)
+
+    ---
+
+    ### Terminal Authentication Failed
+
+    **Symptoms:**
+    - Terminal connects but shows "Authentication failed"
+    - Credentials rejected
+    - Terminal disconnects immediately after auth attempt
+
+    **Possible Causes:**
+    1. Credentials expired (backend restarted)
+    2. Wrong credentials cached in app
+    3. Typo in manually-entered credentials
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Restart Backend">
+        Terminal credentials are generated on backend startup:
+
+        ```bash
+        # Stop backend (Ctrl+C)
+        ccc
+        ```
+
+        New credentials are auto-generated and published.
+      </Step>
+
+      <Step title="Reconnect App">
+        After backend restart:
+
+        1. Disconnect app from server
+        2. Reconnect
+        3. App receives new terminal credentials via system/config (retained message)
+        4. Open terminal tab
+      </Step>
+
+      <Step title="Clear Terminal Cache">
+        If app is caching old credentials:
+
+        1. Force-close app
+        2. Relaunch app
+        3. Reconnect to server
+        4. Try terminal again
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Always reconnect app after backend restarts
+    - Terminal credentials change every backend startup (by design for security)
+    - Don't hardcode or save terminal credentials
+
+    ---
+
+    ### Terminal Keyboard Not Working
+
+    **Symptoms:**
+    - Terminal connects successfully
+    - Can see output but can't type
+    - Keyboard appears but input doesn't work
+
+    **Possible Causes:**
+    1. Terminal session not properly initialized
+    2. Input buffer overflow
+    3. Terminal path not set
+    4. PTY allocation failed
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Check Backend Terminal Logs">
+        Look for PTY initialization:
+
+        ```
+        [DEBUG] Terminal session created { pid: 12345, cwd: '/home/user/my-app' }
+        ```
+
+        If missing, PTY failed to allocate.
+      </Step>
+
+      <Step title="Verify Project Path Set">
+        Before using terminal, ensure project path was updated:
+
+        Backend should log:
+        ```
+        [DEBUG] Terminal project path updated successfully { projectPath: '/home/user/my-app' }
+        ```
+
+        If not, terminal may be in wrong directory.
+      </Step>
+
+      <Step title="Reconnect Terminal">
+        1. Close terminal tab
+        2. Switch to different project
+        3. Switch back to original project
+        4. Reopen terminal tab
+        5. Backend sends path update and creates new PTY
+      </Step>
+
+      <Step title="Test Backend Terminal Directly">
+        ```bash
+        # Test if PTY allocation works on backend system
+        script /dev/null
+        # Should give you a new shell
+        exit
+        ```
+
+        If this fails, system may have PTY exhaustion.
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Always switch to project before opening terminal
+    - Close terminal sessions when not in use to free PTYs
+    - Restart backend if terminal becomes unresponsive
+  </Accordion>
+
+  <Accordion title="Performance Issues" icon="gauge-high">
+    ### Slow Claude Responses
+
+    **Symptoms:**
+    - Messages take >30 seconds to get first response
+    - Streaming is choppy or slow
+    - Backend appears hung during processing
+
+    **Possible Causes:**
+    1. Large project context being analyzed
+    2. Complex tool operations (e.g., Bash commands)
+    3. Backend resource constraints
+    4. Claude Code performance issue
+    5. Slow file I/O on project directory
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Check Backend Resource Usage">
+        ```bash
+        # Monitor CPU/memory while Claude is running
+        top
+        # Look for `claude` process
+
+        # If CPU >90% constantly, Claude is working hard
+        # If memory swapping, add more RAM or reduce context
+        ```
+      </Step>
+
+      <Step title="Reduce Project Context">
+        Large projects take longer to analyze:
+
+        1. Add files to `.claudeignore`:
+        ```
+        node_modules/
+        dist/
+        build/
+        .git/
+        *.log
+        ```
+
+        2. Restart session (Clear Chat) for changes to take effect
+      </Step>
+
+      <Step title="Simplify Requests">
+        - Break complex tasks into smaller messages
+        - Avoid asking Claude to read/analyze dozens of files at once
+        - Use specific file paths instead of broad "refactor the entire app"
+      </Step>
+
+      <Step title="Check Disk I/O">
+        ```bash
+        # Monitor disk I/O
+        iostat -x 1
+
+        # If %util is >80%, disk is bottleneck
+        # Consider using SSD instead of HDD for project directory
+        ```
+      </Step>
+
+      <Step title="Update Claude Code">
+        ```bash
+        # Check for Claude Code updates
+        npm update -g @anthropic-ai/claude-code
+
+        # Restart backend after update
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Use `.claudeignore` to exclude unnecessary files
+    - Keep projects focused and modular
+    - Use SSD storage for active projects
+    - Allocate sufficient RAM (4GB minimum, 8GB recommended)
+
+    ---
+
+    ### High Context Usage
+
+    **Symptoms:**
+    - Context warnings from Claude
+    - "Context window full" errors
+    - Session becomes expensive quickly
+
+    **Possible Causes:**
+    1. Very large files in project
+    2. Accumulated conversation history
+    3. Many tool uses in single session
+    4. Images in messages
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Start Fresh Session">
+        1. Tap menu > Clear Chat
+        2. Start new conversation
+        3. Context resets to zero
+      </Step>
+
+      <Step title="Use Summarization">
+        Ask Claude to summarize the conversation:
+
+        ```
+        Please summarize what we've accomplished so far in a brief paragraph.
+        ```
+
+        Then start a new session with that summary as context.
+      </Step>
+
+      <Step title="Split Large Files">
+        Instead of asking Claude to read entire 5000-line files:
+
+        - Break into smaller modules
+        - Ask Claude to focus on specific sections
+        - Use `Read` with `offset` and `limit` for partial file reading
+      </Step>
+
+      <Step title="Avoid Redundant Tool Uses">
+        Claude may read the same file multiple times if:
+
+        - File was recently edited
+        - You ask about same section repeatedly
+
+        Be specific to avoid unnecessary re-reads.
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Start new sessions for new features/topics
+    - Keep sessions focused on specific tasks
+    - Avoid attaching very large images (compress first)
+    - Regularly clear chat for long-running projects
+
+    ---
+
+    ### Backend Memory Leaks
+
+    **Symptoms:**
+    - Backend memory usage grows over time
+    - Eventually backend becomes slow or crashes
+    - RSS memory in `top` keeps increasing
+
+    **Possible Causes:**
+    1. Sessions not garbage collected
+    2. MQTT message queue buildup
+    3. Zombie Claude processes
+    4. Log file growth
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Check Active Processes">
+        ```bash
+        ps aux | grep claude
+        # Should show one `ccc` backend and one active `claude` process per active chat
+
+        # Kill zombie Claude processes:
+        pkill -9 claude
+        # Then restart backend
+        ```
+      </Step>
+
+      <Step title="Monitor MQTT Queue">
+        Backend logs show queue status:
+
+        ```
+        [DEBUG] MQTT client stats { clients: 3, queuedMessages: 0 }
+        ```
+
+        If queuedMessages keeps growing, messages aren't being consumed.
+      </Step>
+
+      <Step title="Clear Session Cache">
+        Backend caches session info in memory. Restart to clear:
+
+        ```bash
+        # Stop backend (Ctrl+C)
+        ccc
+        ```
+      </Step>
+
+      <Step title="Rotate Log Files">
+        ```bash
+        # Check log file size
+        du -sh /path/to/backend/logs/
+
+        # If >1GB, clear old logs:
+        rm /path/to/backend/logs/*.log.old
+        ```
+      </Step>
+
+      <Step title="Use Process Manager">
+        Use PM2 to auto-restart backend on memory threshold:
+
+        ```bash
+        npm install -g pm2
+
+        pm2 start ccc --max-memory-restart 1G
+
+        # PM2 restarts if memory exceeds 1GB
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Restart backend daily/weekly in production
+    - Monitor memory usage with `pm2 monit`
+    - Close unused sessions/projects regularly
+    - Enable log rotation in production
+  </Accordion>
+
+  <Accordion title="Update Issues" icon="download">
+    ### Auto-Update Failing
+
+    **Symptoms:**
+    - Backend shows "Update available" but won't install
+    - `npm update` fails with errors
+    - Backend version doesn't change after update
+
+    **Possible Causes:**
+    1. Permissions issue with npm global directory
+    2. Backend running during update attempt
+    3. Network connectivity issues
+    4. npm cache corruption
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Stop Backend First">
+        ```bash
+        # Stop all CCC processes
+        pkill -f ccc
+
+        # Verify stopped:
+        ps aux | grep ccc
+        ```
+      </Step>
+
+      <Step title="Clear npm Cache">
+        ```bash
+        npm cache clean --force
+        ```
+      </Step>
+
+      <Step title="Update Manually">
+        ```bash
+        # Update to latest
+        npm update -g @naarang/ccc
+
+        # Or install specific version
+        npm install -g @naarang/ccc@1.5.3
+
+        # Verify version
+        ccc --version
+        ```
+      </Step>
+
+      <Step title="Fix Permission Issues">
+        If you get permission errors:
+
+        ```bash
+        # Option 1: Use sudo (not recommended)
+        sudo npm update -g @naarang/ccc
+
+        # Option 2: Fix npm permissions (recommended)
+        mkdir ~/.npm-global
+        npm config set prefix '~/.npm-global'
+        echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+        source ~/.bashrc
+
+        # Now update without sudo:
+        npm update -g @naarang/ccc
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Stop backend before updating
+    - Fix npm permissions to avoid sudo
+    - Enable auto-update in backend (enabled by default)
+    - Monitor npm registry for new releases
+
+    ---
+
+    ### Version Mismatch Warnings
+
+    **Symptoms:**
+    - App shows "Backend update available"
+    - "Update required" banner in app
+    - Backend and app versions incompatible
+
+    **Possible Causes:**
+    1. Backend not updated after app update
+    2. Beta backend with release app (or vice versa)
+    3. Manual version check returning stale data
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Check Current Versions">
+        **Backend:**
+        ```bash
+        ccc --version
+        ```
+
+        **App:**
+        Go to Settings > About > Version
+
+        **Latest Version:**
+        ```bash
+        npm view @naarang/ccc version
+        # For beta:
+        npm view @naarang/ccc dist-tags.beta
+        ```
+      </Step>
+
+      <Step title="Update Backend">
+        ```bash
+        # Stop backend
+        pkill -f ccc
+
+        # Update to latest stable
+        npm update -g @naarang/ccc
+
+        # Or update to beta (if using beta app)
+        npm install -g @naarang/ccc@beta
+
+        # Restart
+        ccc
+        ```
+      </Step>
+
+      <Step title="Update App">
+        - **Android**: Open Play Store > Updates
+        - **iOS**: Open App Store > Updates
+
+        Install latest version for your channel (beta or release).
+      </Step>
+
+      <Step title="Match Channels">
+        Ensure both backend and app are on same release channel:
+
+        - **Stable**: Backend from `npm install -g @naarang/ccc`, app from Play/App Store
+        - **Beta**: Backend from `npm install -g @naarang/ccc@beta`, app from beta program
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Keep backend and app updated together
+    - Stay on same release channel (beta or stable, not mixed)
+    - Enable auto-update for both backend and app
+    - Subscribe to release notifications
+
+    ---
+
+    ### Breaking Changes After Update
+
+    **Symptoms:**
+    - Features stopped working after update
+    - New errors in previously working code
+    - Backend won't start after update
+
+    **Possible Causes:**
+    1. Configuration format changed
+    2. Breaking API changes
+    3. New required dependencies
+    4. Incompatible Claude Code version
+
+    **Solutions:**
+
+    <Steps>
+      <Step title="Read Changelog">
+        ```bash
+        npm view @naarang/ccc
+
+        # Visit GitHub releases page for detailed changelog:
+        # https://github.com/your-repo/ccc/releases
+        ```
+
+        Look for "BREAKING CHANGES" section.
+      </Step>
+
+      <Step title="Update Configuration">
+        Compare your config with latest defaults:
+
+        ```bash
+        # Check if .env needs updates
+        # Check if command-line flags changed
+        # Update server profiles in app if needed
+        ```
+      </Step>
+
+      <Step title="Update Claude Code">
+        ```bash
+        # Update Claude Code to latest compatible version
+        npm update -g @anthropic-ai/claude-code
+
+        # Check version:
+        claude --version
+        ```
+      </Step>
+
+      <Step title="Rollback if Necessary">
+        If update breaks critical functionality:
+
+        ```bash
+        # Install previous version
+        npm install -g @naarang/ccc@1.5.2
+
+        # Check release notes before updating again
+        ```
+      </Step>
+    </Steps>
+
+    **Prevention:**
+    - Read release notes before updating production systems
+    - Test updates on non-critical projects first
+    - Keep backups of working configurations
+    - Pin specific versions in production until tested
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Getting More Help
+
+If you've tried the solutions above and still need assistance:
+
+<CardGroup cols={2}>
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/9EjE8t4YCF">
+    Get help from the community and developers
+  </Card>
+  <Card title="Documentation" icon="book" href="/introduction">
+    Review full documentation for more details
+  </Card>
+</CardGroup>
+
+---
+
+## Diagnostic Checklist
+
+Before reporting issues, gather this information:
+
+<Steps>
+  <Step title="Backend Info">
+    ```bash
+    # Version
+    ccc --version
+
+    # Startup logs
+    ccc --debug
+
+    # System info
+    uname -a
+    node --version
+    claude --version
+    ```
+  </Step>
+
+  <Step title="App Info">
+    - App version (Settings > About)
+    - Platform (Android/iOS)
+    - Server URL and credentials
+    - Connection status
+    - Error messages (screenshot)
+  </Step>
+
+  <Step title="Network Info">
+    - Can you ping backend host?
+    - Is firewall blocking ports?
+    - Are you using ngrok or local network?
+    - MQTT connection logs
+  </Step>
+
+  <Step title="Session Info">
+    - Session ID (if applicable)
+    - Project path
+    - Permission mode
+    - Session file size
+    - Recent messages before error
+  </Step>
+</Steps>
+
+When reporting issues, include this diagnostic info to help maintainers reproduce and fix the problem faster.

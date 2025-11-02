@@ -1,0 +1,1147 @@
+---
+title: "Server Profiles"
+description: "Connect to multiple CCC backend servers with saved credentials and SSL support"
+---
+
+## Overview
+
+Server Profiles allow you to connect your mobile app to multiple CCC backend instances. Maintain separate profiles for your home development machine, office workstation, remote cloud instance, or shared team server—and switch between them instantly.
+
+<Info>
+Only one server profile can be active at a time. Switching profiles disconnects from the current server and establishes a new MQTT connection to the selected profile.
+</Info>
+
+**Key Features:**
+- Save multiple server configurations
+- Secure credential storage with encryption
+- SSL/TLS support for secure connections
+- One-tap server switching
+- Visual connection status indicators
+- Remote access via ngrok or custom URLs
+
+---
+
+## Why Multiple Server Profiles
+
+### Common Use Cases
+
+**Development Machine + Office Workstation:**
+```
+Profile 1: "Home Desktop"
+- URL: http://192.168.1.100:3000
+- Local network connection
+- Primary development environment
+
+Profile 2: "Office Laptop"
+- URL: https://office-ngrok-url.ngrok-free.app
+- ngrok tunnel for remote access
+- Work projects and repositories
+```
+
+**Multiple Environments:**
+```
+Profile 1: "Development Server"
+- URL: http://localhost:3000
+- Local testing and development
+
+Profile 2: "Staging Server"
+- URL: https://staging.company.com
+- Team collaboration and testing
+
+Profile 3: "Production Support"
+- URL: https://prod.company.com
+- Emergency fixes and monitoring
+- (Use with extreme caution!)
+```
+
+**Team Collaboration:**
+```
+Profile 1: "My Machine"
+- Personal development work
+
+Profile 2: "Shared Dev Server"
+- Team projects on shared VM
+- MQTT authentication enabled
+
+Profile 3: "Pair Programming"
+- Teammate's machine via ngrok
+- Temporary collaboration session
+```
+
+<Tip>
+Create a separate profile for each physical or virtual machine running CCC backend, not for different projects. Use Projects feature to organize codebases on the same backend.
+</Tip>
+
+---
+
+## Creating Server Profiles
+
+### From Mobile App
+
+<Steps>
+  <Step title="Open Settings">
+    Tap the **Settings** tab at the bottom of the screen
+  </Step>
+
+  <Step title="Navigate to Profiles">
+    Scroll to the **Server Profiles** section
+  </Step>
+
+  <Step title="Add New Profile">
+    Tap the **+** button next to "Server Profiles"
+  </Step>
+
+  <Step title="Fill Profile Details">
+    Enter the following information:
+    - **Profile Name** (required): Friendly name for identification
+    - **Server URL** (required): Backend WebSocket URL
+    - **MQTT Username** (optional): For authenticated servers
+    - **MQTT Password** (optional): For authenticated servers
+    - **Use SSL/TLS**: Toggle for secure connections
+  </Step>
+
+  <Step title="Create Profile">
+    Tap **Create** to save the profile
+  </Step>
+</Steps>
+
+![Create server profile form](images/create-server-profile.png)
+
+### Profile Name
+
+Choose descriptive names that identify the server:
+
+**Good Names:**
+- "Home Desktop"
+- "Office Laptop - ngrok"
+- "AWS EC2 Dev Server"
+- "Shared Team Server"
+- "MacBook Pro M2"
+
+**Avoid:**
+- Generic names like "Server 1" or "Test"
+- IP addresses as names (put in URL field)
+- Overly technical names like "mqtt-broker-prod-01"
+
+---
+
+## Server URL Format
+
+The Server URL tells the mobile app where to connect for MQTT communication.
+
+### URL Structure
+
+```
+protocol://hostname:port
+```
+
+**Components:**
+- **Protocol**: `http://` or `https://`
+- **Hostname**: IP address, domain name, or ngrok URL
+- **Port**: Port number where CCC backend is listening (default: 3000)
+
+### Common URL Patterns
+
+**Local Development (Same Device):**
+```
+http://localhost:3000
+```
+
+**Local Network (LAN):**
+```
+http://192.168.1.100:3000
+http://10.0.0.50:3000
+```
+
+**ngrok Tunnel (Remote Access):**
+```
+https://abc123def456.ngrok-free.app
+```
+
+**Custom Domain with SSL:**
+```
+https://ccc.mycompany.com
+wss://ccc-api.example.com:8443
+```
+
+### Protocol Selection
+
+<Tabs>
+  <Tab title="http://">
+    ### HTTP (Insecure)
+
+    Use for local development and trusted networks.
+
+    **When to use:**
+    - localhost connections
+    - Local network (LAN) connections
+    - Testing and development
+    - Environments where SSL is not configured
+
+    **Security:**
+    - No encryption
+    - Credentials visible in network traffic
+    - Safe on trusted networks only
+
+    ```
+    http://localhost:3000
+    http://192.168.1.100:3000
+    ```
+
+    <Warning>
+    Never use `http://` over the public internet. Credentials and messages will be transmitted in plaintext.
+    </Warning>
+  </Tab>
+
+  <Tab title="https://">
+    ### HTTPS (Secure)
+
+    Use for remote access and production environments.
+
+    **When to use:**
+    - ngrok tunnels (always use SSL)
+    - Public internet connections
+    - Remote access scenarios
+    - Shared/team servers
+    - Production or staging environments
+
+    **Security:**
+    - Full TLS encryption
+    - Credentials encrypted in transit
+    - Certificate validation
+    - Required for ngrok URLs
+
+    ```
+    https://abc123def456.ngrok-free.app
+    https://ccc.mycompany.com
+    ```
+
+    **SSL Toggle:**
+    - Enable "Use SSL/TLS Connection" toggle
+    - Mobile app upgrades connection to secure WebSocket (WSS)
+    - Backend must support SSL (ngrok does automatically)
+  </Tab>
+
+  <Tab title="wss://">
+    ### WebSocket Secure (WSS)
+
+    Direct WebSocket protocol for advanced configurations.
+
+    **When to use:**
+    - Custom WebSocket endpoints
+    - Reverse proxy setups
+    - Load-balanced environments
+    - Non-standard port configurations
+
+    ```
+    wss://ccc-ws.example.com:8443
+    ```
+
+    **Configuration:**
+    - Use `wss://` prefix in Server URL
+    - Enable "Use SSL/TLS Connection" toggle
+    - Ensure backend supports WSS directly
+  </Tab>
+</Tabs>
+
+### Finding Your Server URL
+
+**Local Network IP:**
+```bash
+# macOS/Linux
+ifconfig | grep "inet "
+# Output: inet 192.168.1.100 netmask...
+
+# Windows
+ipconfig
+# Output: IPv4 Address. . . . : 192.168.1.100
+```
+
+**ngrok Tunnel URL:**
+```bash
+# Start ngrok tunnel
+ngrok http 3000
+
+# Output shows:
+# Forwarding  https://abc123def456.ngrok-free.app -> http://localhost:3000
+```
+
+**Public Domain:**
+- Configure DNS to point to your server's public IP
+- Set up reverse proxy (nginx, Caddy, etc.) for SSL
+- Use domain name in Server URL field
+
+---
+
+## Profile Metadata
+
+Each server profile stores:
+
+```typescript
+interface ServerProfile {
+  id: string;              // Unique UUID
+  name: string;            // Display name
+  server_url: string;      // Connection URL
+  mqtt_username?: string;  // Optional MQTT username
+  mqtt_password?: string;  // Optional MQTT password (encrypted)
+  use_ssl: boolean;        // SSL/TLS enabled
+  is_active: boolean;      // Currently active profile
+  created_at: string;      // ISO timestamp
+  updated_at: string;      // ISO timestamp
+}
+```
+
+### Credential Storage
+
+**Security Measures:**
+- Passwords stored in **Expo Secure Store** (encrypted keychain)
+- Never stored in plain text
+- Separate from AsyncStorage
+- OS-level encryption (iOS Keychain, Android Keystore)
+- Per-device encryption keys
+
+**Storage Separation:**
+```typescript
+// Public metadata (AsyncStorage)
+{
+  "id": "profile-uuid-1234",
+  "name": "Home Desktop",
+  "server_url": "http://192.168.1.100:3000",
+  "use_ssl": false,
+  "is_active": true
+}
+
+// Credentials (Expo Secure Store - Encrypted)
+{
+  "mqtt_username": "alice",
+  "mqtt_password": "secret123"
+}
+```
+
+---
+
+## Active Profile
+
+Only one server profile can be active at any time. The active profile determines which backend server the mobile app connects to.
+
+### Active Profile Indicator
+
+**In Profile List:**
+- Selected radio button (filled circle)
+- Blue border on card
+- "Active" badge or checkmark
+
+**In Chat Interface:**
+- Connection status shows active server
+- Green indicator when connected
+- Server name in connection tooltip
+
+![Server profile list with active indicator](images/server-profile-list.png)
+
+### Setting Active Profile
+
+<Steps>
+  <Step title="Open Settings">
+    Navigate to Settings → Server Profiles
+  </Step>
+
+  <Step title="Select Profile">
+    Tap on the profile card you want to activate
+  </Step>
+
+  <Step title="MQTT Reconnection">
+    The app disconnects from current server and connects to selected profile
+  </Step>
+
+  <Step title="Confirmation">
+    Toast message confirms: "Home Desktop is now active"
+  </Step>
+</Steps>
+
+**What Happens:**
+1. Current MQTT connection closes
+2. App switches to new profile settings
+3. New MQTT connection established
+4. Connection status updates (green if successful)
+5. Projects list refreshes from new server
+
+<Info>
+Switching profiles does NOT affect local project data. Projects remain in your mobile app, but session data comes from the newly active backend server.
+</Info>
+
+---
+
+## Connection Status
+
+### Visual Indicators
+
+The mobile app displays real-time connection status:
+
+**Connection States:**
+
+<Tabs>
+  <Tab title="Connected">
+    ### Connected (Green)
+
+    Successfully connected to MQTT broker.
+
+    **Indicator:**
+    - Green dot in Settings
+    - "Connected" text
+    - Server name displayed
+
+    **What it means:**
+    - MQTT WebSocket connection active
+    - Messages can be sent and received
+    - Backend is reachable
+    - Authentication succeeded (if required)
+
+    **Actions available:**
+    - Send messages to Claude
+    - Create/resume sessions
+    - Refresh projects
+    - Execute tool permissions
+  </Tab>
+
+  <Tab title="Reconnecting">
+    ### Reconnecting (Yellow/Orange)
+
+    Attempting to re-establish connection.
+
+    **Indicator:**
+    - Yellow/orange dot
+    - "Reconnecting..." text
+    - Animated spinner
+
+    **What it means:**
+    - Connection was lost
+    - Auto-reconnect in progress
+    - Exponential backoff between attempts
+    - Will retry for ~5 minutes
+
+    **Common causes:**
+    - Network interruption
+    - Backend server restarted
+    - WiFi connection dropped
+    - Mobile app backgrounded
+
+    **Actions:**
+    - Wait for auto-reconnect
+    - Check network connection
+    - Verify backend is running
+    - Manually reconnect if needed
+  </Tab>
+
+  <Tab title="Disconnected">
+    ### Disconnected (Red)
+
+    No connection to backend server.
+
+    **Indicator:**
+    - Red dot
+    - "Disconnected" or "Not Connected" text
+    - Error message (if available)
+
+    **What it means:**
+    - No active MQTT connection
+    - Cannot communicate with backend
+    - Messages will not be delivered
+    - Reconnect attempts exhausted
+
+    **Common causes:**
+    - Backend not running
+    - Incorrect server URL
+    - Network unreachable
+    - Authentication failed
+    - SSL/TLS mismatch
+
+    **Solutions:**
+    1. Verify backend is running (`ccc` command)
+    2. Check Server URL is correct
+    3. Test network connectivity
+    4. Review SSL/TLS setting
+    5. Check MQTT credentials
+  </Tab>
+</Tabs>
+
+### Connection Status Location
+
+**Settings Screen:**
+- Top of Server Profiles section
+- Shows active profile name
+- Colored indicator dot
+- Connection state text
+
+**Projects Screen:**
+- Pull-to-refresh updates connection
+- Error toast if disconnected
+- "Unable to connect to server" message
+
+**Chat Screen:**
+- Connection indicator in header (optional)
+- Message send fails if disconnected
+- Retry mechanism on reconnect
+
+---
+
+## Editing Server Profiles
+
+### Updating Profile Details
+
+<Steps>
+  <Step title="Open Profile Menu">
+    Tap the edit icon (pencil) on a profile card
+  </Step>
+
+  <Step title="Edit Modal Opens">
+    Pre-filled form appears with current values
+  </Step>
+
+  <Step title="Modify Fields">
+    Update name, URL, credentials, or SSL setting
+  </Step>
+
+  <Step title="Save Changes">
+    Tap **Save** to update the profile
+  </Step>
+</Steps>
+
+### What You Can Edit
+
+**Profile Name:**
+- Change friendly identifier
+- Doesn't affect connection
+- Updates immediately
+
+**Server URL:**
+- Update if backend moved to new IP/domain
+- Changes connection endpoint
+- If active profile: reconnects automatically
+
+**Credentials:**
+- Add/update MQTT username and password
+- Securely re-encrypted on save
+- If active profile: reconnects with new credentials
+
+**SSL/TLS Setting:**
+- Enable or disable SSL
+- Must match backend configuration
+- If active profile: reconnects with new protocol
+
+### Auto-Reconnect on Edit
+
+If you edit the **active profile**:
+
+1. Save triggers immediate reconnection
+2. Old connection closes
+3. New connection attempts with updated settings
+4. Connection status updates accordingly
+
+**Non-active profiles:**
+- Changes saved immediately
+- No reconnection (not currently in use)
+- New settings apply when activated
+
+---
+
+## Deleting Server Profiles
+
+### Deletion Restrictions
+
+<Warning>
+You cannot delete the currently active profile. Activate a different profile first, then delete the old one.
+</Warning>
+
+### Deletion Process
+
+<Steps>
+  <Step title="Ensure Profile is Inactive">
+    If active, switch to a different profile first
+  </Step>
+
+  <Step title="Open Delete">
+    Tap the delete icon (trash) on the profile card
+  </Step>
+
+  <Step title="Confirm Deletion">
+    Confirmation modal appears: "Are you sure you want to delete [Name]?"
+  </Step>
+
+  <Step title="Confirm">
+    Tap **Delete** to permanently remove the profile
+  </Step>
+</Steps>
+
+**What Gets Deleted:**
+- Profile metadata from AsyncStorage
+- Encrypted credentials from Secure Store
+- All associated configuration
+
+**What Remains:**
+- Backend server (unaffected)
+- Projects (still in local app storage)
+- Session files on backend disk
+
+<Info>
+Deleting a server profile only removes the connection configuration from your mobile app. It does not affect the backend server or any data on that machine.
+</Info>
+
+---
+
+## MQTT Authentication
+
+### When to Use Credentials
+
+**Credentials Required:**
+- Shared servers with multiple users
+- Production/staging environments
+- Public-facing backends
+- Team collaboration servers
+
+**Credentials Optional:**
+- Personal development machine (localhost)
+- Local network (trusted LAN)
+- Single-user environments
+
+### Configuring Backend for Auth
+
+**Enable MQTT authentication on backend:**
+
+```bash
+# Start CCC with MQTT authentication
+ccc --mqtt-user alice --mqtt-pass secret123
+```
+
+**Environment variables:**
+```bash
+# .env file
+MQTT_USERNAME=alice
+MQTT_PASSWORD=secret123
+
+# Start backend
+ccc
+```
+
+**Config file:**
+```json
+// .claude/config.json
+{
+  "mqtt": {
+    "username": "alice",
+    "password": "secret123"
+  }
+}
+```
+
+### Mobile App Configuration
+
+When backend has authentication enabled:
+
+1. Create/edit server profile
+2. Enter **MQTT Username** (e.g., "alice")
+3. Enter **MQTT Password** (e.g., "secret123")
+4. Credentials encrypted and stored securely
+5. Used automatically on connection
+
+**Error if credentials wrong:**
+- "Disconnected" status
+- "Authentication failed" error
+- Check backend logs for details
+
+---
+
+## SSL/TLS Configuration
+
+### Enabling SSL
+
+**Toggle "Use SSL/TLS Connection" when:**
+- Server URL uses `https://` or `wss://`
+- Connecting over the internet
+- Using ngrok tunnel
+- Backend has SSL certificate configured
+- Reverse proxy handles SSL termination
+
+**Keep SSL disabled when:**
+- Server URL uses `http://` or `ws://`
+- localhost or local network connection
+- Backend doesn't support SSL
+- Development environment without certificates
+
+### ngrok with SSL
+
+ngrok automatically provides SSL:
+
+```bash
+# Start ngrok tunnel
+ngrok http 3000
+
+# Output:
+# Forwarding  https://abc123def456.ngrok-free.app -> http://localhost:3000
+```
+
+**Mobile App Configuration:**
+```
+Profile Name: "Home via ngrok"
+Server URL: https://abc123def456.ngrok-free.app
+SSL/TLS: ✅ Enabled
+```
+
+<Info>
+ngrok URLs always use `https://`, so SSL toggle should always be enabled for ngrok profiles.
+</Info>
+
+### Custom SSL Setup
+
+For self-hosted SSL:
+
+**Backend with Reverse Proxy:**
+```bash
+# nginx reverse proxy (example)
+server {
+    listen 443 ssl;
+    server_name ccc.mycompany.com;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+**Mobile App Profile:**
+```
+Server URL: https://ccc.mycompany.com
+SSL/TLS: ✅ Enabled
+```
+
+### SSL Errors
+
+**Common SSL issues:**
+
+**Certificate Validation Failed:**
+- Self-signed certificate rejected
+- Certificate expired
+- Hostname mismatch
+
+**Solutions:**
+- Use valid SSL certificate (Let's Encrypt)
+- Configure backend with proper certificates
+- Use ngrok for automatic SSL
+
+**Connection Timeout:**
+- Port blocked by firewall
+- SSL not configured on backend
+- Wrong protocol (http vs https)
+
+---
+
+## Use Cases
+
+### Use Case 1: Home + Office Machines
+
+**Scenario:** Developer works from home desktop and office laptop.
+
+**Profiles:**
+
+```
+Profile 1: "Home Desktop"
+- URL: http://192.168.1.100:3000
+- Local network connection
+- Primary development machine
+- No authentication needed
+
+Profile 2: "Office Laptop - ngrok"
+- URL: https://work-tunnel.ngrok-free.app
+- Remote access via ngrok
+- Work projects repository
+- Optional: MQTT auth for security
+```
+
+**Workflow:**
+1. At home: Use "Home Desktop" profile
+2. Commuting: Switch to "Office Laptop - ngrok" profile
+3. At office: Continue with same profile or switch back to direct LAN connection
+
+---
+
+### Use Case 2: Team Collaboration
+
+**Scenario:** Team uses shared development server.
+
+**Profiles:**
+
+```
+Profile 1: "My Local Machine"
+- URL: http://localhost:3000
+- Personal development work
+- No shared access
+
+Profile 2: "Shared Dev Server"
+- URL: https://dev-server.company.com
+- MQTT Username: team-member-alice
+- MQTT Password: ********
+- SSL enabled
+- Team projects and pairing
+```
+
+**Security:**
+- Each team member has unique MQTT credentials
+- SSL ensures encrypted communication
+- Backend logs show which user performed actions
+
+---
+
+### Use Case 3: Multi-Environment Setup
+
+**Scenario:** Managing development, staging, and production backends.
+
+**Profiles:**
+
+```
+Profile 1: "Dev - localhost"
+- URL: http://localhost:3000
+- Active development
+- Frequent changes
+
+Profile 2: "Staging Server"
+- URL: https://staging.company.com
+- MQTT auth required
+- Testing and validation
+
+Profile 3: "Production Support"
+- URL: https://prod.company.com
+- MQTT auth required
+- Emergency fixes only
+- Use with Plan mode (read-only)
+```
+
+<Warning>
+Using CCC against production environments is risky. Consider using Plan mode (analysis only) or read-only permissions to prevent accidental changes.
+</Warning>
+
+---
+
+## Troubleshooting
+
+### Connection Failures
+
+**Symptom:** Red "Disconnected" status, cannot connect.
+
+**Solutions:**
+
+1. **Verify backend is running:**
+   ```bash
+   # Check if CCC backend is active
+   ps aux | grep ccc
+
+   # Or restart backend
+   ccc
+   ```
+
+2. **Test network connectivity:**
+   ```bash
+   # Ping server (replace with your server IP/domain)
+   ping 192.168.1.100
+
+   # Test port accessibility
+   telnet 192.168.1.100 3000
+   ```
+
+3. **Check server URL:**
+   - Ensure protocol matches backend (http vs https)
+   - Verify port number (default: 3000)
+   - Test URL in web browser
+
+4. **Review backend logs:**
+   ```bash
+   # Check CCC backend console output for errors
+   # Look for MQTT connection attempts and errors
+   ```
+
+### Authentication Errors
+
+**Symptom:** "Authentication failed" or "Access denied" errors.
+
+**Solutions:**
+
+1. **Verify credentials:**
+   - Check username spelling
+   - Ensure password is correct
+   - Re-enter credentials in profile
+
+2. **Check backend configuration:**
+   ```bash
+   # Verify backend MQTT credentials match
+   ccc --mqtt-user alice --mqtt-pass secret123
+   ```
+
+3. **Test without auth:**
+   - Temporarily disable MQTT auth on backend
+   - If connection succeeds: credential mismatch
+   - Re-enable auth and fix credentials
+
+### SSL/TLS Issues
+
+**Symptom:** Connection fails when SSL enabled, works without.
+
+**Solutions:**
+
+1. **Protocol mismatch:**
+   ```
+   ✅ Server URL: https://... → SSL toggle: ON
+   ✅ Server URL: http://...  → SSL toggle: OFF
+   ❌ Server URL: https://... → SSL toggle: OFF (mismatch)
+   ❌ Server URL: http://...  → SSL toggle: ON  (mismatch)
+   ```
+
+2. **Certificate issues:**
+   - Use valid SSL certificate
+   - Check certificate expiration
+   - Ensure hostname matches certificate
+
+3. **ngrok configuration:**
+   - Always use `https://` for ngrok URLs
+   - Enable SSL toggle
+   - Don't use `http://` with ngrok URLs
+
+### Profile Not Saving
+
+**Symptom:** Changes to profile don't persist after saving.
+
+**Solutions:**
+
+1. **Check for validation errors:**
+   - Ensure all required fields filled
+   - Server URL must be valid format
+   - Profile name cannot be empty
+
+2. **Restart app:**
+   - Close and reopen mobile app
+   - Check if changes persisted
+
+3. **Storage issues:**
+   - Clear app cache (Settings → App Info → Clear Cache)
+   - Reinstall app if persistent (backup data first)
+
+### Cannot Delete Profile
+
+**Symptom:** Delete button grayed out or shows error.
+
+**Cause:** Attempting to delete active profile.
+
+**Solution:**
+
+1. Activate a different profile
+2. Confirm new profile is active (green indicator)
+3. Delete the old profile
+
+**If only one profile exists:**
+- Create a new profile first
+- Activate the new profile
+- Delete the old profile
+
+---
+
+## Tips & Best Practices
+
+### Descriptive Naming
+
+Use names that clearly identify each server:
+
+```
+✅ Good Names:
+- "Home MacBook Pro"
+- "Office Desktop - ngrok"
+- "AWS EC2 Dev Server"
+- "Team Shared - Staging"
+
+❌ Vague Names:
+- "Server 1"
+- "Test"
+- "Main"
+- "Backup"
+```
+
+### Credential Management
+
+**For shared servers:**
+- Use unique credentials per user
+- Rotate passwords periodically
+- Don't share passwords via insecure channels
+
+**For personal servers:**
+- Authentication optional on localhost
+- Enable auth for remote access (ngrok)
+- Use strong passwords for internet-facing servers
+
+### Profile Organization
+
+**Keep profiles minimal:**
+- 2-3 profiles for most users
+- Delete unused profiles
+- Update URLs when servers change
+
+**Common setup:**
+```
+1. Primary development machine (local)
+2. Remote access profile (ngrok)
+3. Optional: Team/shared server
+```
+
+### SSL Best Practices
+
+**Always use SSL when:**
+- Connecting over the internet
+- Using ngrok tunnels
+- Accessing from public networks
+- Sharing backend with others
+
+**SSL optional when:**
+- localhost connections
+- Trusted local network (home/office LAN)
+- Single-user development environment
+
+### Testing New Profiles
+
+Before committing to a new profile:
+
+1. Create profile with test name
+2. Activate and verify connection
+3. Test message sending
+4. Verify project sync
+5. Rename to final name
+6. Delete test profile if redundant
+
+---
+
+## Code Examples
+
+### Creating a Server Profile Programmatically
+
+```typescript
+import { storage } from '@/lib/storage';
+
+async function createServerProfile(
+  name: string,
+  serverUrl: string,
+  username?: string,
+  password?: string,
+  useSsl: boolean = false
+) {
+  const profile = await storage.createServerProfile({
+    name: name.trim(),
+    server_url: serverUrl.trim(),
+    mqtt_username: username?.trim(),
+    mqtt_password: password?.trim(),
+    use_ssl: useSsl,
+  });
+
+  console.log('Server profile created:', profile.id);
+  return profile;
+}
+
+// Usage
+await createServerProfile(
+  'Home Desktop',
+  'http://192.168.1.100:3000'
+);
+
+await createServerProfile(
+  'Office Laptop - ngrok',
+  'https://abc123.ngrok-free.app',
+  'alice',
+  'secret123',
+  true // SSL enabled
+);
+```
+
+### Switching Active Profile
+
+```typescript
+import { storage } from '@/lib/storage';
+import { useMQTT } from '@/contexts/MQTTContext';
+
+async function switchToProfile(profileId: string) {
+  const { disconnect, connect } = useMQTT();
+
+  // Disconnect from current server
+  await disconnect();
+
+  // Set new active profile
+  await storage.setActiveProfile(profileId);
+
+  // Get profile with credentials
+  const profile = await storage.getServerProfileWithCredentials(profileId);
+  if (!profile) throw new Error('Profile not found');
+
+  // Connect to new server
+  await connect(
+    profile.server_url,
+    profile.mqtt_username,
+    profile.mqtt_password,
+    profile.use_ssl
+  );
+
+  console.log(`Switched to profile: ${profile.name}`);
+}
+
+// Usage
+await switchToProfile('profile-uuid-1234');
+```
+
+### Fetching Profile with Credentials
+
+```typescript
+import { storage } from '@/lib/storage';
+
+async function getProfileWithCredentials(profileId: string) {
+  const profile = await storage.getServerProfileWithCredentials(profileId);
+
+  if (!profile) {
+    console.error('Profile not found');
+    return null;
+  }
+
+  console.log('Profile:', profile.name);
+  console.log('URL:', profile.server_url);
+  console.log('Username:', profile.mqtt_username || '(none)');
+  console.log('Has password:', !!profile.mqtt_password);
+  console.log('SSL:', profile.use_ssl ? 'enabled' : 'disabled');
+
+  return profile;
+}
+
+// Usage
+const profile = await getProfileWithCredentials('profile-uuid-1234');
+```
+
+---
+
+## Related Documentation
+
+- [Multi-Project Support](/features/multi-project) - Managing multiple codebases
+- [MQTT Communication](/architecture/mqtt) - Understanding the messaging protocol
+- [Remote Access](/advanced/remote-access) - Setting up ngrok for remote connections
+- [Security Best Practices](/advanced/security) - Securing your CCC setup
+
+---
+
+## Summary
+
+Server Profiles enable flexible, multi-server workflows:
+
+- Save multiple backend server configurations
+- Secure credential storage with encryption
+- One-tap switching between servers
+- Visual connection status indicators
+- SSL/TLS support for secure remote access
+- Authentication support for shared servers
+- Only one profile active at a time
+- Reconnects automatically when switching profiles
+
+Use server profiles to seamlessly work across multiple development machines, environments, and team collaboration scenarios.

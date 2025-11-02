@@ -1,0 +1,691 @@
+---
+title: "Configuration Files"
+description: "Structure and options for .env, settings.local.json, session-config.json, and sessions.json"
+---
+
+## Overview
+
+CCC uses multiple configuration files to manage backend settings, project hooks, session mappings, and permission modes. All configuration is **automatically generated** when you start chatting with Claude through the mobile app.
+
+<Note>
+**Auto-Configuration**: You typically don't need to manually create or edit these files. CCC sets everything up automatically when you create your first project and start a session.
+</Note>
+
+---
+
+## Configuration File Locations
+
+CCC creates configuration files in two locations:
+
+### Backend Configuration (Optional)
+
+Located where you run the `ccc` command:
+
+```
+your-working-directory/
+└── .env                    # Optional: Backend environment variables
+```
+
+### Project Configuration (Auto-Generated)
+
+Located in each project directory:
+
+```
+your-project/
+└── .claude/
+    ├── settings.local.json     # Hook registration & allowed tools
+    ├── session-config.json     # Permission modes & backend version
+    ├── sessions.json           # Session-to-project mapping
+    └── hooks/
+        ├── permissions_hook.js # Permission handling script
+        ├── package.json        # Hook dependencies
+        ├── package-lock.json   # Lock file
+        └── .env                # MQTT configuration for hooks
+```
+
+---
+
+## Backend Environment File (.env)
+
+The `.env` file in your working directory (where you run `ccc`) is **optional** and allows you to set default configuration without command-line flags.
+
+### Location
+
+```
+/path/where/you/run/ccc/.env
+```
+
+### Format
+
+```bash
+# MQTT Broker Configuration
+MQTT_USERNAME=admin
+MQTT_PASSWORD=secret123
+MQTT_BROKER_PORT=8884
+MQTT_CLIENT_ID=claude-backend
+MQTT_QOS=1
+
+# Router Configuration
+ROUTER_PORT=8883
+
+# Terminal Server Configuration
+TERMINAL_PORT=3001
+
+# ngrok Configuration (optional)
+NGROK_AUTH_TOKEN=your-ngrok-token
+NGROK_DOMAIN=myapp.ngrok-free.app
+
+# Logging
+LOG_LEVEL=info
+```
+
+### All Variables
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `MQTT_USERNAME` | string | `undefined` | MQTT broker username (required for ngrok) |
+| `MQTT_PASSWORD` | string | `undefined` | MQTT broker password (required for ngrok) |
+| `MQTT_BROKER_PORT` | number | `8884` | Internal MQTT broker port |
+| `MQTT_CLIENT_ID` | string | `claude-backend` | MQTT client identifier |
+| `MQTT_QOS` | 0\|1\|2 | `1` | MQTT Quality of Service level |
+| `ROUTER_PORT` | number | `8883` | Request router port (app connects here) |
+| `TERMINAL_PORT` | number | `3001` | Terminal server port |
+| `NGROK_AUTH_TOKEN` | string | `undefined` | ngrok authentication token |
+| `NGROK_DOMAIN` | string | `undefined` | ngrok static domain |
+| `LOG_LEVEL` | string | `info` | Logging level: error, warn, info, debug |
+
+<Info>
+**CLI Flags Override .env**: If you pass command-line flags, they take precedence over environment variables in `.env`.
+</Info>
+
+### Example Usage
+
+**Create .env file:**
+```bash
+cat > .env << 'EOF'
+MQTT_USERNAME=admin
+MQTT_PASSWORD=my-secure-password-123
+MQTT_BROKER_PORT=8884
+ROUTER_PORT=8883
+LOG_LEVEL=debug
+EOF
+```
+
+**Start backend:**
+```bash
+ccc  # Uses .env configuration automatically
+```
+
+<Warning>
+**Security**: Never commit `.env` files to version control. Add `.env` to your `.gitignore`.
+```bash
+echo ".env" >> .gitignore
+```
+</Warning>
+
+---
+
+## Project Configuration Files
+
+These files are created in your project's `.claude/` directory and are **auto-generated** by CCC.
+
+---
+
+## settings.local.json
+
+The `settings.local.json` file registers Claude hooks and manages the allowed tools list.
+
+### Location
+
+```
+your-project/.claude/settings.local.json
+```
+
+### Purpose
+
+- Register permission hooks for tool use
+- Store allowed tools list (when using Default permission mode)
+- Configure hook timeouts
+- Support both standard and MCP tools
+
+### Structure
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "ExitPlanMode|Edit|MultiEdit|Write|NotebookEdit|WebFetch|WebSearch|Bash|BashOutput|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/permissions_hook.js",
+            "timeout": 300
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/permissions_hook.js",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Read(/home/user/project/src/index.ts)",
+      "Bash(npm install)",
+      "Edit(/home/user/project/package.json)"
+    ]
+  }
+}
+```
+
+### Fields
+
+<ParamField path="hooks" type="object" required>
+  Hook registration configuration for Claude.
+
+  <Expandable title="properties">
+    <ParamField path="hooks.PreToolUse" type="array">
+      Array of hook configurations that run before tools execute.
+
+      Each item contains:
+      - `matcher`: Regex pattern matching tool names
+      - `hooks`: Array of hook commands to execute
+      - `timeout`: Max execution time in seconds
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="permissions" type="object">
+  Allowed tools list (populated in Default permission mode).
+
+  <Expandable title="properties">
+    <ParamField path="permissions.allow" type="array">
+      Array of allowed tool invocations. Format: `ToolName(parameter)`.
+
+      Examples:
+      - `Read(/path/to/file.ts)`
+      - `Bash(npm install)`
+      - `Edit(/path/to/config.json)`
+      - `Write(/new/file.js)`
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Matchers Explained
+
+**Standard Tools Matcher:**
+```
+"ExitPlanMode|Edit|MultiEdit|Write|NotebookEdit|WebFetch|WebSearch|Bash|BashOutput|Read"
+```
+Matches built-in Claude tools.
+
+**MCP Tools Matcher:**
+```
+"mcp__.*__.*"
+```
+Matches MCP (Model Context Protocol) tools with pattern: `mcp__server__tool`.
+
+### Auto-Generation
+
+CCC automatically:
+1. Creates this file on first session
+2. Registers permission hooks
+3. Adds tools to `allow` list when you approve them (Default mode)
+4. Updates hooks when backend version changes
+
+<Tip>
+**Manual Editing**: You can manually add tools to the `permissions.allow` array to pre-approve them without prompting.
+</Tip>
+
+---
+
+## session-config.json
+
+Stores per-session configuration including permission modes and backend version tracking.
+
+### Location
+
+```
+your-project/.claude/session-config.json
+```
+
+### Purpose
+
+- Track permission mode for each session
+- Store backend version that created the session
+- Record current working directory
+- Enable automatic hook updates on version changes
+
+### Structure
+
+```json
+{
+  "session-abc123def": {
+    "permissionMode": "default",
+    "backendVersion": "1.1.1-beta.7",
+    "cwd": "/home/user/projects/my-project"
+  },
+  "session-xyz789ghi": {
+    "permissionMode": "accept-edits",
+    "backendVersion": "1.1.1-beta.7",
+    "cwd": "/home/user/projects/my-project"
+  }
+}
+```
+
+### Session Entry Format
+
+Each session ID maps to a configuration object:
+
+<ParamField path="permissionMode" type="string" required>
+  Active permission mode for this session.
+
+  **Values:**
+  - `default`: Prompt for each tool on first use
+  - `accept-edits`: Auto-approve file edits
+  - `plan`: Analysis only, reject all changes
+  - `bypass-all`: Skip all permission prompts
+
+  ```json
+  "permissionMode": "default"
+  ```
+</ParamField>
+
+<ParamField path="backendVersion" type="string">
+  CCC backend version that created/updated this session.
+
+  Used to detect version changes and trigger hook re-installation.
+
+  ```json
+  "backendVersion": "1.1.1-beta.7"
+  ```
+</ParamField>
+
+<ParamField path="cwd" type="string">
+  Current working directory for this session.
+
+  Used by terminal server to set correct starting directory.
+
+  ```json
+  "cwd": "/home/user/projects/my-project"
+  ```
+</ParamField>
+
+### Auto-Updates
+
+CCC updates `session-config.json` when:
+- You change permission mode in the mobile app
+- Backend version changes (triggers hook re-copy)
+- Terminal path changes (updates `cwd`)
+
+### Version Change Detection
+
+When you update CCC backend:
+1. New session starts → backend checks `backendVersion` in config
+2. Version mismatch detected → hooks are re-copied from new version
+3. `settings.local.json` is force-updated with new hook configuration
+4. Session config updated with new `backendVersion`
+
+This ensures hooks stay synchronized with backend code.
+
+---
+
+## sessions.json
+
+Maps Claude session IDs to project IDs for session management.
+
+### Location
+
+```
+your-project/.claude/sessions.json
+```
+
+### Purpose
+
+- Link session files to projects
+- Enable session lookup and listing
+- Support session resumption
+- Track all sessions for a project
+
+### Structure
+
+```json
+{
+  "01j9h7v9q29zqt0wcyacpme3yb": "project-mobile-app",
+  "01j9h8k3x52nqp7rbxczmwh4nc": "project-mobile-app",
+  "01j9h9m2y61kqs8sczdbnxi5pd": "project-backend"
+}
+```
+
+### Format
+
+Simple key-value mapping:
+- **Key**: Claude session ID (generated by Claude Code)
+- **Value**: Project ID (generated by mobile app)
+
+### Session IDs
+
+**Claude Session ID Format:**
+```
+01j9h7v9q29zqt0wcyacpme3yb
+```
+- 26 characters
+- Lowercase alphanumeric
+- ULID format (sortable by time)
+
+**Project ID Format:**
+```
+project-1730568123456
+```
+- Prefix: `project-`
+- Timestamp: milliseconds since epoch
+
+### Auto-Management
+
+CCC automatically:
+1. Creates `sessions.json` on first session
+2. Adds new session entries when sessions start
+3. Updates mappings when sessions resume
+4. Uses this file to list sessions in mobile app
+
+### Session Files Location
+
+Claude session files are stored separately:
+```
+~/.claude/projects/[hash-of-project-path]/[session-id].jsonl
+```
+
+Example:
+```
+~/.claude/projects/a1b2c3d4e5f6/01j9h7v9q29zqt0wcyacpme3yb.jsonl
+```
+
+---
+
+## Hooks Configuration (.claude/hooks/.env)
+
+The `.env` file inside `.claude/hooks/` provides MQTT connection settings to the permission hook.
+
+### Location
+
+```
+your-project/.claude/hooks/.env
+```
+
+### Purpose
+
+- Provide MQTT broker connection details to hooks
+- Auto-generated by CCC backend
+- Updated when MQTT settings change
+
+### Structure
+
+```bash
+MQTT_PORT=8883
+MQTT_USERNAME=admin
+MQTT_PASSWORD=secret123
+```
+
+### Fields
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MQTT_PORT` | Yes | MQTT router port (usually 8883) |
+| `MQTT_USERNAME` | No | Username if MQTT auth is enabled |
+| `MQTT_PASSWORD` | No | Password if MQTT auth is enabled |
+
+### Auto-Updates
+
+CCC updates this file when:
+- Project hooks are first set up
+- MQTT port changes
+- Authentication credentials change
+- Backend restarts with new settings
+
+<Warning>
+**Do Not Edit**: This file is auto-managed. Changes will be overwritten when:
+- Backend restarts
+- Permission mode changes
+- Backend version updates
+</Warning>
+
+---
+
+## Hook Files
+
+CCC copies hook files into your project for permission handling.
+
+### Files Copied
+
+```
+your-project/.claude/hooks/
+├── permissions_hook.js    # Permission logic
+├── package.json           # Dependencies
+├── package-lock.json      # Dependency lock
+└── .env                   # MQTT config (auto-generated)
+```
+
+### permissions_hook.js
+
+The permission hook intercepts tool use requests and communicates with the mobile app via MQTT.
+
+**Responsibilities:**
+- Parse tool use parameters
+- Send permission request to mobile app
+- Wait for user approval/denial
+- Return result to Claude
+
+### package.json
+
+Defines hook dependencies:
+```json
+{
+  "name": "ccc-permissions-hook",
+  "version": "1.0.0",
+  "dependencies": {
+    "mqtt": "^5.3.0",
+    "dotenv": "^16.3.0"
+  }
+}
+```
+
+**Dependencies:**
+- `mqtt`: MQTT client for communication
+- `dotenv`: Environment variable loading
+
+### Auto-Installation
+
+When hooks are copied, CCC automatically runs:
+```bash
+cd your-project/.claude/hooks
+npm install --production
+```
+
+This installs dependencies locally in the hooks folder.
+
+---
+
+## Manual Configuration
+
+While CCC auto-manages configuration, you can manually edit files for advanced use cases.
+
+### Adding Pre-Approved Tools
+
+Edit `settings.local.json` to pre-approve tools:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read(*)",                    // Allow reading any file
+      "Bash(npm install)",          // Allow npm install
+      "Bash(npm test)",             // Allow npm test
+      "Edit(/src/**)",              // Allow editing src/ files
+      "Write(/logs/**)"             // Allow writing to logs/
+    ]
+  }
+}
+```
+
+<Tip>
+Use wildcards (`*`, `**`) to match multiple files or commands.
+</Tip>
+
+### Changing Permission Mode
+
+Edit `session-config.json` to change a session's permission mode:
+
+```json
+{
+  "session-abc123def": {
+    "permissionMode": "accept-edits"  // Change from "default"
+  }
+}
+```
+
+<Warning>
+**Restart Claude**: After editing session config, restart your Claude session for changes to take effect.
+</Warning>
+
+### Custom Hook Timeout
+
+Edit `settings.local.json` to adjust hook timeout:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "timeout": 600  // 10 minutes instead of 5
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Validation & Schema
+
+CCC validates configuration files on load but does not enforce strict schemas. Invalid configuration may cause errors at runtime.
+
+### Common Validation Errors
+
+**Invalid JSON:**
+```
+Error: Failed to parse settings.local.json: Unexpected token } in JSON
+```
+
+**Solution:** Use a JSON validator or `jq` to check syntax:
+```bash
+cat .claude/settings.local.json | jq .
+```
+
+**Missing Required Fields:**
+```
+Error: Hook configuration missing 'matcher' field
+```
+
+**Solution:** Compare with examples in this document and restore required fields.
+
+### Automatic Repair
+
+If CCC detects corrupted configuration:
+1. It logs a warning
+2. Backs up the corrupted file
+3. Regenerates with defaults
+
+---
+
+## Backup & Reset
+
+### Backup Configuration
+
+Before making manual changes:
+```bash
+cp -r your-project/.claude your-project/.claude.backup
+```
+
+### Reset Configuration
+
+Delete `.claude/` to force regeneration:
+```bash
+rm -rf your-project/.claude
+# Next session will recreate everything
+```
+
+<Warning>
+**Data Loss**: Resetting configuration deletes:
+- Allowed tools list
+- Session mappings
+- Permission history
+
+Session files in `~/.claude/projects/` are **not** deleted.
+</Warning>
+
+---
+
+## Troubleshooting
+
+### Hooks Not Working
+
+**Symptom:** Permission prompts don't appear.
+
+**Solutions:**
+1. Check `settings.local.json` exists and has hook configuration
+2. Verify `permissions_hook.js` exists and is executable
+3. Check hook dependencies are installed: `ls .claude/hooks/node_modules/`
+4. Review logs with `ccc --debug`
+
+### Version Mismatch Errors
+
+**Symptom:** `Hook version mismatch` or similar errors.
+
+**Solution:** Delete `.claude/` and restart session to force hook re-copy:
+```bash
+rm -rf your-project/.claude
+```
+
+### MQTT Connection Errors in Hooks
+
+**Symptom:** Hook fails with `MQTT connection refused`.
+
+**Solutions:**
+1. Check `.claude/hooks/.env` has correct `MQTT_PORT`
+2. Verify backend is running
+3. Check firewall allows localhost connections
+4. Restart backend with `--debug` to see MQTT logs
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="CLI Commands" icon="terminal" href="/reference/cli-commands">
+    Complete reference for ccc command-line options
+  </Card>
+
+  <Card title="Environment Variables" icon="code" href="/reference/environment-variables">
+    All supported environment variables and defaults
+  </Card>
+
+  <Card title="Permission System" icon="shield-check" href="/features/permission-system">
+    Understanding permission modes and allowed tools
+  </Card>
+
+  <Card title="Custom Hooks" icon="webhook" href="/advanced/custom-hooks">
+    Creating and debugging custom Claude hooks
+  </Card>
+</CardGroup>
