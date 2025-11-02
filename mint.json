@@ -2,11 +2,15 @@
   "$schema": "https://mintlify.com/schema.json",
   "name": "CCC",
   "logo": "/logo/ccc-logo.png",
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
   "colors": {
     "primary": "#C15F3C",
     "light": "#D17952",
     "dark": "#A1502F"
+  },
+  "modeToggle": {
+    "default": "dark",
+    "isHidden": true
   },
   "topbar": {
     "style": "default"
